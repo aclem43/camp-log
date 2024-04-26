@@ -1,8 +1,36 @@
 <script setup lang="ts">
+import { mdiHistory, mdiHome, mdiMagnify, mdiMap, mdiPlus } from '@mdi/js'
+import { RouterView } from 'vue-router'
 </script>
 
 <template>
-<div></div>
+  <v-app>
+    <v-main>
+      <RouterView />
+    </v-main>
+    <v-bottom-navigation grow>
+      <v-btn :to="{ name: 'home' }">
+        <v-icon :icon="mdiHome" />
+        <span>Home</span>
+      </v-btn>
+      <v-btn :to="{ name: 'home' }">
+        <v-icon :icon="mdiMagnify" />
+        <span>Search</span>
+      </v-btn>
+      <v-btn :to="{ name: 'home' }">
+        <v-icon :icon="mdiPlus" />
+        <span>Log</span>
+      </v-btn>
+      <v-btn :to="{ name: 'home' }">
+        <v-icon :icon="mdiMap" />
+        <span>Map</span>
+      </v-btn>
+      <v-btn :to="{ name: 'home' }">
+        <v-icon :icon="mdiHistory" />
+        <span>Histoy</span>
+      </v-btn>
+    </v-bottom-navigation>
+  </v-app>
 </template>
 
 <style scoped>
