@@ -7,10 +7,19 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView
+      component: HomeView,
     },
-
-  ]
+    {
+      path: '/add/log',
+      name: 'addLog',
+      component: () => import('../views/AddLogView.vue'),
+    },
+    {
+      path: '/search',
+      name: 'search',
+      component: () => import('../views/SearchView.vue'),
+    },
+  ],
 })
 
 export default router

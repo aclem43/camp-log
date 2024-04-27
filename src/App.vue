@@ -13,14 +13,28 @@ import { RouterView } from 'vue-router'
         <v-icon :icon="mdiHome" />
         <span>Home</span>
       </v-btn>
-      <v-btn :to="{ name: 'home' }">
+      <v-btn :to="{ name: 'search' }">
         <v-icon :icon="mdiMagnify" />
         <span>Search</span>
       </v-btn>
-      <v-btn :to="{ name: 'home' }">
-        <v-icon :icon="mdiPlus" />
-        <span>Log</span>
-      </v-btn>
+      <v-menu>
+        <template #activator="{ props }">
+          <v-btn v-bind="props">
+            <v-icon :icon="mdiPlus" />
+            <span>Add</span>
+          </v-btn>
+        </template>
+        <v-list>
+          <v-list-item
+            title="Log"
+            :to="{ name: 'addLog' }"
+          />
+          <v-list-item
+            title="Location"
+          />
+        </v-list>
+      </v-menu>
+
       <v-btn :to="{ name: 'home' }">
         <v-icon :icon="mdiMap" />
         <span>Map</span>
