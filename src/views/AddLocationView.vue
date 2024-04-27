@@ -1,0 +1,67 @@
+<script setup lang="ts">
+import { mdiCampfire, mdiMapMarker } from '@mdi/js'
+import { ref } from 'vue'
+import { remult } from 'remult'
+import { Location, campTypes, campTypesToText } from '@/shared/models/Location'
+
+const location = ref<Omit<Location, 'id'>>({
+  name: '',
+  notes: '',
+  latitude: 0,
+  longitude: 0,
+  type: '2wdAcess',
+  address: '',
+})
+
+const campTypesText = campTypes.map((t) => { return { title: campTypesToText(t), value: t } })
+
+async function addLog() {
+  await remult.repo(Location).create(location.value)
+}
+</script>
+
+<template>
+  <v-container>
+    <v-col>
+      <v-card>
+        <v-card-title>
+          Add New Log
+        </v-card-title>
+
+        <v-card-text>
+          <v-text-field
+            v-model="location.name"
+            label="Name"
+            required
+            variant="solo-filled"
+          />
+          <v-textarea
+            v-model="location.notes"
+            label="Notes"
+            required
+            variant="solo-filled"
+          />
+          <v-select
+            v-model="location.type" label="Type" required :items="campTypesText" variant="solo-filled"
+            :prepend-inner-icon="mdiCampfire"
+          />
+
+          <v-text-field
+            v-model="location.address"
+            label="Adress"
+            required
+            variant="solo-filled"
+            :prepend-inner-icon="mdiMapMarker"
+          />
+
+          <v-btn
+            color="primary"
+            @click="addLog"
+          >
+            Add Location
+          </v-btn>
+        </v-card-text>
+      </v-card>
+    </v-col>
+  </v-container>
+</template>
