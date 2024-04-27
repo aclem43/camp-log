@@ -1,5 +1,14 @@
 <script setup lang="ts">
 import { mdiAccount } from '@mdi/js'
+import { remult } from 'remult'
+import { onMounted, ref } from 'vue'
+import { Location } from '@/shared/models/Location'
+
+const locations = ref<Location[]>([])
+
+onMounted(async () => {
+  locations.value = await remult.repo(Location).find({ limit: 5 })
+})
 </script>
 
 <template>
@@ -18,17 +27,21 @@ import { mdiAccount } from '@mdi/js'
           <v-card-title>
             Popular Campsites
           </v-card-title>
-          <v-list>
-            <v-list-item
-              v-for="i in 2"
-              :key="i"
-              :title="`Locations ${i}`"
-              subtitle="Locations"
-            />
-          </v-list>
+          <v-card-text>
+            <v-list>
+              <v-list-item
+                v-for="loc in locations"
+                :key="loc.id"
+
+                :title="loc.name"
+                :subtitle="loc.address"
+              />
+            </v-list>
+          </v-card-text>
           <v-card-actions>
             <v-btn
               color="primary"
+              :to="{ name: 'locations' }"
             >
               View Locations
             </v-btn>

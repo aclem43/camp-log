@@ -3,6 +3,7 @@ import { Location } from './Location'
 
 @Entity('log', {
   dbName: 'camp.log',
+  allowApiCrud: true,
 })
 export class Log {
   @Fields.autoIncrement()

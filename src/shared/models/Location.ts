@@ -19,6 +19,7 @@ export function campTypesToText(campType: campTypesType) {
 
 @Entity('location', {
   dbName: 'camp.location',
+  allowApiCrud: true,
 })
 export class Location {
   @Fields.autoIncrement()

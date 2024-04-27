@@ -4,6 +4,7 @@ import { Log } from './Log'
 
 @Entity('activity', {
   dbName: 'camp.activity',
+  allowApiCrud: true,
 })
 export class Activity {
   @Fields.autoIncrement()

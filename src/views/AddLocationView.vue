@@ -16,7 +16,8 @@ const location = ref<Omit<Location, 'id'>>({
 const campTypesText = campTypes.map((t) => { return { title: campTypesToText(t), value: t } })
 
 async function addLog() {
-  await remult.repo(Location).create(location.value)
+  const locationRepo = remult.repo(Location)
+  locationRepo.insert(location.value)
 }
 </script>
 
@@ -25,7 +26,7 @@ async function addLog() {
     <v-col>
       <v-card>
         <v-card-title>
-          Add New Log
+          Add New Location
         </v-card-title>
 
         <v-card-text>

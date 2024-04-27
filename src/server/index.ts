@@ -12,6 +12,7 @@ const hostname = proc.env.HOST ?? 'localhost'
 app.use(api)
 
 const version = proc.env.npm_package_version
+
 app.listen(port, hostname, () => {
   console.log(`[server] Version: ${version}`)
   console.log(`[server] Server is running on http://${hostname}:${port}`)
