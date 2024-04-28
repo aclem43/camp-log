@@ -3,6 +3,7 @@ import { mdiMapMarker } from '@mdi/js'
 import { remult } from 'remult'
 import { onMounted, ref } from 'vue'
 import { Location } from '@/shared/models/Location'
+import DatePicker from '@/components/date-picker/DatePicker.vue'
 
 const log = ref({
   title: '',
@@ -55,6 +56,10 @@ function addLog() {
               item-value="id"
             />
 
+            <div class="d-flex ga-4">
+              <DatePicker label="Start Date" />
+              <DatePicker label="End Date" />
+            </div>
             <v-text-field
               v-model="log.weather"
               label="Weather"

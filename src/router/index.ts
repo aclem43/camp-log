@@ -17,12 +17,12 @@ const router = createRouter({
     {
       path: '/add/log',
       name: 'addLog',
-      component: () => import('../views/add/LogView.vue'),
+      component: () => import('../views/add/AddLogView.vue'),
     },
     {
       path: '/add/location',
       name: 'addLocation',
-      component: () => import('../views/add/LocationView.vue'),
+      component: () => import('../views/add/AddLocationView.vue'),
     },
     {
       path: '/search',
