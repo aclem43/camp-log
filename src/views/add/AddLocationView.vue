@@ -3,6 +3,7 @@ import { mdiCampfire, mdiMapMarker } from '@mdi/js'
 import { ref } from 'vue'
 import { remult } from 'remult'
 import { Location, campTypes, campTypesToText } from '@/shared/models/Location'
+import { showAlert } from '@/scripts/alert'
 
 const location = ref<Omit<Location, 'id'>>({
   name: '',
@@ -18,6 +19,7 @@ const campTypesText = campTypes.map((t) => { return { title: campTypesToText(t),
 async function addLog() {
   const locationRepo = remult.repo(Location)
   locationRepo.insert(location.value)
+  showAlert('Location added successfully')
 }
 </script>
 

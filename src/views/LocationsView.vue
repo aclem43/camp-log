@@ -19,6 +19,12 @@ onMounted(async () => {
             Locations
           </v-card-title>
           <v-card-text>
+            <v-btn
+              color="primary"
+              :to="{ name: 'addLocation' }"
+            >
+              Add Location
+            </v-btn>
             <v-list>
               <v-list-item
                 v-for="loc in locations"

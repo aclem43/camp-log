@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { mdiMapMarker } from '@mdi/js'
-import { ref } from 'vue'
+import { remult } from 'remult'
+import { onMounted, ref } from 'vue'
+import { Location } from '@/shared/models/Location'
 
 const log = ref({
   title: '',
@@ -9,6 +11,11 @@ const log = ref({
   location: '',
 })
 
+const locations = ref<Location[]>([])
+
+onMounted(async () => {
+  locations.value = await remult.repo(Location).find({ limit: 5 })
+})
 function addLog() {
   console.log(log.value)
 }
@@ -28,24 +35,30 @@ function addLog() {
               v-model="log.title"
               label="Title"
               required
+              variant="solo-filled"
             />
 
             <v-textarea
               v-model="log.description"
               label="Description"
-
+              variant="solo-filled"
               required
             />
 
             <v-autocomplete
               v-model="log.location"
               label="Location"
-              :append-inner-icon="mdiMapMarker"
+              variant="solo-filled"
+              :items="locations"
+              :prepend-inner-icon="mdiMapMarker"
+              item-title="name"
+              item-value="id"
             />
 
             <v-text-field
               v-model="log.weather"
               label="Weather"
+              variant="solo-filled"
               required
             />
 
