@@ -22,7 +22,7 @@ export class Log {
     dateStart = new Date()
 
   @Fields.date()
-    dateEnd = new Date()
+    dateEnd?: Date | null
 
   @Relations.toOne(() => Location)
     location?: Location

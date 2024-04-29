@@ -19,6 +19,7 @@ const date = ref(props.date ?? new Date())
         :label="label"
         variant="solo-filled"
         density="compact"
+        hide-details
       />
     </template>
   </VueDatePicker>

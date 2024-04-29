@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiAccount } from '@mdi/js'
+import { mdiAccount, mdiCog } from '@mdi/js'
 import { remult } from 'remult'
 import { onMounted, ref } from 'vue'
 import { Location } from '@/shared/models/Location'
@@ -15,10 +15,21 @@ onMounted(async () => {
   <v-container>
     <v-row>
       <v-col class="d-flex flex-column ga-4">
-        <v-card
-          :prepend-icon="mdiAccount"
-          title="Hi Alexi"
-        >
+        <v-card>
+          <v-card-title class="d-flex ga-4 justify-space-between">
+            <div>
+              <v-icon size="32" :icon="mdiAccount" />
+              Welcome, User
+            </div>
+            <div>
+              <v-btn
+                color="primary"
+                :to="{ name: 'settings' }"
+              >
+                <v-icon :icon="mdiCog" />
+              </v-btn>
+            </div>
+          </v-card-title>
           <v-card-text>
             Welcome to your personal logbook. Start by adding a new log.
           </v-card-text>

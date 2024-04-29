@@ -29,7 +29,6 @@ onMounted(async () => {
               <v-list-item
                 v-for="loc in locations"
                 :key="loc.id"
-
                 :title="loc.name"
                 :subtitle="loc.address"
               />
