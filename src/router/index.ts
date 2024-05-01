@@ -15,6 +15,11 @@ const router = createRouter({
       component: () => import('../views/LocationsView.vue'),
     },
     {
+      path: '/logs',
+      name: 'logs',
+      component: () => import('../views/LogView.vue'),
+    },
+    {
       path: '/add/log',
       name: 'addLog',
       component: () => import('../views/add/AddLogView.vue'),
@@ -33,6 +38,11 @@ const router = createRouter({
       path: '/settings',
       name: 'settings',
       component: () => import('../views/SettingsView.vue'),
+    },
+    {
+      path: '/map',
+      name: 'map',
+      component: () => import('../views/MapView.vue'),
     },
   ],
 })

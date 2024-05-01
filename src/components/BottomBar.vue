@@ -31,11 +31,11 @@ import { mdiHistory, mdiHome, mdiMagnify, mdiMap, mdiPlus } from '@mdi/js'
       </v-list>
     </v-menu>
 
-    <v-btn :to="{ name: 'home' }">
+    <v-btn :to="{ name: 'map' }">
       <v-icon :icon="mdiMap" />
       <span>Map</span>
     </v-btn>
-    <v-btn :to="{ name: 'home' }">
+    <v-btn :to="{ name: 'logs' }">
       <v-icon :icon="mdiHistory" />
       <span>Histoy</span>
     </v-btn>

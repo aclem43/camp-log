@@ -6,7 +6,7 @@ import { useDisplay } from 'vuetify'
 import { Location } from '@/shared/models/Location'
 import DatePicker from '@/components/date-picker/DatePicker.vue'
 import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
-import type { Log } from '@/shared/models/Log'
+import { Log } from '@/shared/models/Log'
 import { showAlert } from '@/scripts/alert'
 
 const log = ref<Omit<Log, 'id' >>({
@@ -44,7 +44,8 @@ function addLog() {
     showAlert('Name and Start Date are required')
     return
   }
-  console.log(log.value)
+  remult.repo(Log).insert(log.value)
+  showAlert('Log Added')
 }
 </script>
 
@@ -55,7 +56,6 @@ function addLog() {
         <v-card-title>
           Add New Log
         </v-card-title>
-
         <v-card-text>
           <v-form>
             <v-text-field
@@ -96,10 +96,10 @@ function addLog() {
               </v-row>
               <v-row dense>
                 <v-col :cols="mobile || oneDay ? 12 : 6">
-                  <DatePicker label="Start Date" />
+                  <DatePicker v-model="log.dateStart" label="Start Date" />
                 </v-col>
                 <v-col :cols="mobile ? 12 : 6">
-                  <DatePicker v-if="!oneDay" label="End Date" />
+                  <DatePicker v-if="!oneDay" v-model="log.dateEnd" label="End Date" />
                 </v-col>
               </v-row>
             </v-container>

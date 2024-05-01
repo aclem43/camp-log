@@ -28,7 +28,7 @@ import { mdiMagnify } from '@mdi/js'
           filter
         />
       </v-chip-group>
-      <v-divider />
+      <v-divider class="mb-2" />
       <div class="d-flex flex-column ga-4">
         <v-card v-for="x in 5" :key="x" title="Result" text="Example Result" />
       </div>

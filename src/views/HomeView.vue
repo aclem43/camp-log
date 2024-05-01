@@ -72,6 +72,7 @@ onMounted(async () => {
           <v-card-actions>
             <v-btn
               color="primary"
+              :to="{ name: 'logs' }"
             >
               View Logs
             </v-btn>

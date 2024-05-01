@@ -7,7 +7,9 @@ import type { DatePickerProps } from './DataPicker'
 
 const props = defineProps<DatePickerProps>()
 
-const date = ref(props.date ?? new Date())
+const date = defineModel({
+  default: new Date(),
+})
 </script>
 
 <template>
