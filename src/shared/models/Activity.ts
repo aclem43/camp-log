@@ -17,5 +17,5 @@ export class Activity {
     log?: Log
 
   @Fields.number()
-    quantity = 0
+    value = 0
 }

@@ -25,7 +25,7 @@ onMounted(async () => {
               { title: 'Name', value: 'name', sortable: true },
               { title: 'Location', value: 'location', sortable: true },
               { title: 'Start Date', value: 'dateStart', sortable: true },
-              { title: 'Actions', value: 'actions', sortable: false },
+              { title: 'Actions', value: 'actions', sortable: false, width: '100px' },
             ]"
             :items="logs"
             :items-per-page="5"

@@ -3,11 +3,13 @@ import { mdiAccount, mdiCog } from '@mdi/js'
 import { remult } from 'remult'
 import { onMounted, ref } from 'vue'
 import { Location } from '@/shared/models/Location'
+import { Log } from '@/shared/models/Log'
 
 const locations = ref<Location[]>([])
-
+const logs = ref<Log[]>([])
 onMounted(async () => {
   locations.value = await remult.repo(Location).find({ limit: 5 })
+  logs.value = await remult.repo(Log).find({ limit: 5, orderBy: { dateStart: 'desc' }, include: { location: true } })
 })
 </script>
 
@@ -63,10 +65,10 @@ onMounted(async () => {
           </v-card-title>
           <v-list>
             <v-list-item
-              v-for="i in 3"
-              :key="i"
-              :title="`Log Title ${i}`"
-              subtitle="Log Description"
+              v-for="log in logs"
+              :key="log.id"
+              :title="log.name"
+              :subtitle=" log.dateStart.toLocaleDateString()"
             />
           </v-list>
           <v-card-actions>

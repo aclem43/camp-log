@@ -8,6 +8,7 @@ import DatePicker from '@/components/date-picker/DatePicker.vue'
 import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
 import { Log } from '@/shared/models/Log'
 import { showAlert } from '@/scripts/alert'
+import { Activity } from '@/shared/models/Activity'
 
 const log = ref<Omit<Log, 'id' >>({
   name: '',
@@ -21,8 +22,10 @@ const log = ref<Omit<Log, 'id' >>({
 const { mobile } = useDisplay()
 const locations = ref<Location[]>([])
 const oneDay = ref(false)
-const selectedActivities = ref<ActivityTemplate[]>([])
+
+const selectedActivities = ref<{ template: ActivityTemplate, value?: number }[]>([])
 const currentlySelectedActivity = ref<ActivityTemplate | null>(null)
+
 const activities = ref<ActivityTemplate[]>([])
 
 onMounted(async () => {
@@ -31,20 +34,34 @@ onMounted(async () => {
 })
 
 function addActivities() {
-  if (currentlySelectedActivity.value && !selectedActivities.value.includes(currentlySelectedActivity.value))
-    selectedActivities.value.push(currentlySelectedActivity.value)
+  if (currentlySelectedActivity.value && !selectedActivities.value.includes({ template: currentlySelectedActivity.value }))
+    selectedActivities.value.push({ template: currentlySelectedActivity.value })
 }
 
-function romeoveActivity(activity: ActivityTemplate) {
-  selectedActivities.value = selectedActivities.value.filter(a => a.id !== activity.id)
+function romeoveActivity(activity: { template: ActivityTemplate, value?: number }) {
+  selectedActivities.value = selectedActivities.value.filter(a => a.template.id !== activity.template.id)
 }
-
-function addLog() {
+const logRepo = remult.repo(Log)
+const activityRepo = remult.repo(Activity)
+async function addLog() {
   if (!log.value.name || !log.value.dateStart) {
     showAlert('Name and Start Date are required')
     return
   }
-  remult.repo(Log).insert(log.value)
+  if (!log.value.location) {
+    showAlert('Location is required')
+    return
+  }
+  const l = await logRepo.insert(log.value)
+  if (activities.value.length > 0) {
+    for (const activity of selectedActivities.value) {
+      activityRepo.insert({
+        template: activity.template,
+        value: activity.value,
+        log: l,
+      })
+    }
+  }
   showAlert('Log Added')
 }
 </script>
@@ -128,22 +145,24 @@ function addLog() {
               <v-divider />
               <v-list-item
                 v-for="activity in selectedActivities"
-                :key="activity.id"
+                :key="activity.template.id"
               >
                 <v-list-item-title>
-                  {{ activity.name }}
+                  {{ activity.template.name }}
                 </v-list-item-title>
                 <v-list-item-action class="d-flex ga-4 pa-2 align-center justify-space-between" :class="mobile ? 'flex-column' : ''">
                   <div>
-                    {{ activity.description }}
+                    {{ activity.template.description }}
                   </div>
                   <div class="d-flex ga-4 pa-2 align-center flex-grow-1 justify-end">
                     <v-text-field
-                      :label="activity.unit"
+                      v-model="activity.value"
+                      :label="activity.template.unit"
                       variant="solo-filled"
                       style="max-width: 300px;min-width: 100px"
                       density="compact"
                       hide-details
+                      type="number"
                       required
                     />
                     <v-btn
