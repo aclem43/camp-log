@@ -36,7 +36,7 @@ onMounted(async () => {
 const checkIncludesActivity = (activity: ActivityTemplate) => selectedActivities.value.some(a => a.template.id === activity.id)
 
 function addActivities() {
-  if (currentlySelectedActivity.value && checkIncludesActivity(currentlySelectedActivity.value))
+  if (currentlySelectedActivity.value && !checkIncludesActivity(currentlySelectedActivity.value))
     selectedActivities.value.push({ template: currentlySelectedActivity.value })
 }
 
