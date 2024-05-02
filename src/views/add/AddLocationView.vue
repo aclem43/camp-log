@@ -2,7 +2,7 @@
 import { mdiCampfire, mdiMapMarker } from '@mdi/js'
 import { ref } from 'vue'
 import { remult } from 'remult'
-import { Location, campTypes, campTypesToText } from '@/shared/models/Location'
+import { Location, campTypes, campTypesToText, type campTypesType } from '@/shared/models/Location'
 import { showAlert } from '@/scripts/alert'
 
 const location = ref<Omit<Location, 'id'>>({
@@ -14,7 +14,7 @@ const location = ref<Omit<Location, 'id'>>({
   address: '',
 })
 
-const campTypesText = campTypes.map((t) => { return { title: campTypesToText(t), value: t } })
+const campTypesText = campTypes.map((t) => { return { title: campTypesToText(t as campTypesType), value: t } })
 
 async function addLog() {
   const locationRepo = remult.repo(Location)
