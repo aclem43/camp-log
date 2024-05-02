@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiAccount, mdiCog } from '@mdi/js'
+import { mdiAccount, mdiChartLine, mdiCog } from '@mdi/js'
 import { remult } from 'remult'
 import { onMounted, ref } from 'vue'
 import { Location } from '@/shared/models/Location'
@@ -35,6 +35,15 @@ onMounted(async () => {
           <v-card-text>
             Welcome to your personal logbook. Start by adding a new log.
           </v-card-text>
+          <v-card-actions>
+            <v-btn
+              color="primary"
+              :to="{ name: 'stats' }"
+              :prepend-icon="mdiChartLine"
+            >
+              Statistics
+            </v-btn>
+          </v-card-actions>
         </v-card>
         <v-card>
           <v-card-title>

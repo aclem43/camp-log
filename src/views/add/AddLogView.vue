@@ -33,8 +33,10 @@ onMounted(async () => {
   activities.value = await remult.repo(ActivityTemplate).find()
 })
 
+const checkIncludesActivity = (activity: ActivityTemplate) => selectedActivities.value.some(a => a.template.id === activity.id)
+
 function addActivities() {
-  if (currentlySelectedActivity.value && !selectedActivities.value.includes({ template: currentlySelectedActivity.value }))
+  if (currentlySelectedActivity.value && checkIncludesActivity(currentlySelectedActivity.value))
     selectedActivities.value.push({ template: currentlySelectedActivity.value })
 }
 
