@@ -51,7 +51,7 @@ async function addLog() {
 
           <v-text-field
             v-model="location.address"
-            label="Adress"
+            label="Address"
             required
             variant="solo-filled"
             :prepend-inner-icon="mdiMapMarker"
