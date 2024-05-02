@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiMagnify } from '@mdi/js'
+import { mdiCampfire, mdiMagnify, mdiMapMarker } from '@mdi/js'
 import { remult } from 'remult'
 import { onMounted, ref } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
@@ -8,11 +8,32 @@ import { Location } from '@/shared/models/Location'
 
 const search = ref<string>('')
 
-const searchResults = ref<{ title: string, subtitle: string }[]>([])
+interface SearchResult {
+  title: string
+  subtitle: string
+  icon?: string
+}
+
+const searchResults = ref<SearchResult[]>([])
 const loading = ref<boolean>(false)
 
 const logRepo = remult.repo(Log)
 const locationRepo = remult.repo(Location)
+
+function logToSearchResult(log: Log): SearchResult {
+  return {
+    title: log.name,
+    subtitle: log.dateStart.toLocaleDateString(),
+    icon: mdiCampfire,
+  }
+}
+function locationToSearchResult(location: Location): SearchResult {
+  return {
+    title: location.name,
+    subtitle: location.address,
+    icon: mdiMapMarker,
+  }
+}
 
 async function searchQuery() {
   const query = search.value
@@ -21,8 +42,8 @@ async function searchQuery() {
   if (query === '') {
     const logResults = await logRepo.find({ limit: 10 })
     const locationResults = await locationRepo.find({ limit: 10 })
-    searchResults.value.push(...logResults.map((log) => { return { title: log.name, subtitle: log.dateStart.toLocaleDateString() } }))
-    searchResults.value.push(...locationResults.map((location) => { return { title: location.name, subtitle: location.address } }))
+    searchResults.value.push(...logResults.map(log => logToSearchResult(log)))
+    searchResults.value.push(...locationResults.map(location => locationToSearchResult(location)))
     searchResults.value.sort((a, b) => a.title.localeCompare(b.title))
     loading.value = false
     return
@@ -68,7 +89,7 @@ onMounted(() => {
             <v-skeleton-loader v-for="x in 4" :key="x" type="list-item" />
           </template>
           <template v-else>
-            <v-list-item v-for="result in searchResults" :key="result.title" :title="result.title" :subtitle="result.subtitle" />
+            <v-list-item v-for="result in searchResults" :key="result.title" :prepend-icon="result.icon" :title="result.title" :subtitle="result.subtitle" />
             <v-list-item v-if="searchResults.length === 0" title="No results found" />
           </template>
         </v-list>
