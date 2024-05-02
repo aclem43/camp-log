@@ -23,20 +23,24 @@ onMounted(async () => {
   loadActivities()
 })
 
-function removeActivity(activity: ActivityTemplate) {
-  activityRepo.delete(activity.id)
+async function removeActivity(activity: ActivityTemplate) {
+  // eslint-disable-next-line no-alert
+  const confirm = window.confirm('Are you sure you want to add this activity?')
+  if (!confirm)
+    return
+  await activityRepo.delete(activity.id)
   showAlert('Activity removed successfully')
-  loadActivities()
+  await loadActivities()
 }
 
-function addActivity() {
+async function addActivity() {
   if (!activity.value.name || !activity.value.description || !activity.value.unit) {
     showAlert('Name, Description, and Units are required')
     return
   }
-  activityRepo.insert(activity.value)
+  await activityRepo.insert(activity.value)
   showAlert('Activity added successfully')
-  loadActivities()
+  await loadActivities()
 }
 </script>
 
