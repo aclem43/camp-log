@@ -6,8 +6,23 @@ import { Log } from '@/shared/models/Log'
 
 const logs = ref<Log[]>([])
 
+const logRepo = remult.repo(Log)
+
+async function load() {
+  logs.value = await logRepo.find({ include: { location: true } })
+}
+
+async function deleteLog(log: Log) {
+  // eslint-disable-next-line no-alert
+  const confirm = window.confirm('Are you sure you want to delete this log?')
+  if (!confirm)
+    return
+  await logRepo.delete(log)
+  await load()
+}
+
 onMounted(async () => {
-  logs.value = await remult.repo(Log).find({ include: { location: true } })
+  await load()
 })
 </script>
 
@@ -45,7 +60,7 @@ onMounted(async () => {
                 <v-btn density="compact" color="primary" :to="`/log/${item.id}`">
                   <v-icon :icon="mdiEye" />
                 </v-btn>
-                <v-btn density="compact" color="error">
+                <v-btn density="compact" color="error" @click="deleteLog(item)">
                   <v-icon :icon="mdiDelete" />
                 </v-btn>
               </div>
