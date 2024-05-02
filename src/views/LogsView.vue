@@ -29,6 +29,7 @@ onMounted(async () => {
             ]"
             :items="logs"
             :items-per-page="5"
+            :sort-by="[{ key: 'dateStart', order: 'desc' }]"
           >
             <template #[`item.location`]="{ item }">
               {{ item.location?.name }}
@@ -41,7 +42,7 @@ onMounted(async () => {
             </template>
             <template #[`item.actions`]="{ item }">
               <div class="d-flex ga-2 align-center justify-center">
-                <v-btn density="compact" color="primary">
+                <v-btn density="compact" color="primary" :to="`/log/${item.id}`">
                   <v-icon :icon="mdiEye" />
                 </v-btn>
                 <v-btn density="compact" color="error">

@@ -17,6 +17,12 @@ const router = createRouter({
     {
       path: '/logs',
       name: 'logs',
+      component: () => import('../views/LogsView.vue'),
+    },
+    {
+      path: '/log/:id',
+      name: 'log',
+      props: (route) => { return { id: Number(route.params.id) } },
       component: () => import('../views/LogView.vue'),
     },
     {
