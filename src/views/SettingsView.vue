@@ -19,8 +19,14 @@ async function loadActivities() {
   activityTemplates.value = await activityRepo.find()
 }
 
+const version = ref('Loading')
+
 onMounted(async () => {
   loadActivities()
+
+  const response = await fetch('/api/version')
+  const data = await response.json()
+  version.value = data.version
 })
 
 async function removeActivity(activity: ActivityTemplate) {
@@ -52,11 +58,14 @@ async function addActivity() {
           <v-card-title>
             Settings
           </v-card-title>
-          <v-card-subtitle>
-            Activites
-          </v-card-subtitle>
           <v-card-text>
             <v-expansion-panels>
+              <v-expansion-panel>
+                <v-expansion-panel-title> Info </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  Version: {{ version }}
+                </v-expansion-panel-text>
+              </v-expansion-panel>
               <v-expansion-panel>
                 <v-expansion-panel-title> Themes </v-expansion-panel-title>
                 <v-expansion-panel-text>
