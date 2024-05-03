@@ -16,6 +16,10 @@ app.use(api)
 
 const frontendFiles = `${process.cwd()}/dist`
 
+app.get('/api/version', (_, res) => {
+  res.send(JSON.stringify({ version: proc.env.npm_package_version }))
+})
+
 app.use(express.static(frontendFiles))
 app.get('/*', (_, res) => {
   res.sendFile(`${frontendFiles}/index.html`)
