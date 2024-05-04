@@ -22,7 +22,6 @@ const rotation = ref(0)
     </ol-tile-layer>
 
     <ol-rotate-control />
-    <ol-interaction-link />
   </ol-map>
 </template>
 
