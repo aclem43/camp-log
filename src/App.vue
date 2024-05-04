@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
+import { useDisplay } from 'vuetify'
 import BottomBar from './components/BottomBar.vue'
 import { setupAlert } from './scripts/alert'
 import { darkTheme } from './scripts/theme'
+import NavBar from './components/NavBar.vue'
 
 const alert = setupAlert()
+const { mobile } = useDisplay()
 </script>
 
 <template>
@@ -12,7 +15,8 @@ const alert = setupAlert()
     <v-main>
       <RouterView />
     </v-main>
-    <BottomBar />
+    <BottomBar v-if="mobile" />
+    <NavBar v-else />
     <v-snackbar v-model="alert.show" :timeout="alert.duration" variant="flat">
       {{ alert.message }}
       <template #actions>
