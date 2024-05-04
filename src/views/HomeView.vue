@@ -6,10 +6,25 @@ import { Location } from '@/shared/models/Location'
 import { Log } from '@/shared/models/Log'
 
 const locations = ref<Location[]>([])
+const locationsLoading = ref(false)
 const logs = ref<Log[]>([])
-onMounted(async () => {
+const logsLoading = ref(false)
+
+async function loadLocations() {
+  locationsLoading.value = true
   locations.value = await remult.repo(Location).find({ limit: 5 })
+  locationsLoading.value = false
+}
+
+async function loadLogs() {
+  logsLoading.value = true
   logs.value = await remult.repo(Log).find({ limit: 5, orderBy: { dateStart: 'desc' }, include: { location: true } })
+  logsLoading.value = false
+}
+
+onMounted(async () => {
+  loadLocations()
+  loadLogs()
 })
 </script>
 
@@ -50,13 +65,18 @@ onMounted(async () => {
             Popular Campsites
           </v-card-title>
           <v-card-text>
-            <v-list>
-              <v-list-item
-                v-for="loc in locations"
-                :key="loc.id"
-                :title="loc.name"
-                :subtitle="loc.address"
-              />
+            <v-list :loading="locationsLoading">
+              <template v-if="locationsLoading">
+                <v-skeleton-loader v-for="x in 4" :key="x" type="list-item" />
+              </template>
+              <template v-else>
+                <v-list-item
+                  v-for="loc in locations"
+                  :key="loc.id"
+                  :title="loc.name"
+                  :subtitle="loc.address"
+                />
+              </template>
             </v-list>
           </v-card-text>
           <v-card-actions>
@@ -72,13 +92,18 @@ onMounted(async () => {
           <v-card-title>
             Recent Logs
           </v-card-title>
-          <v-list>
-            <v-list-item
-              v-for="log in logs"
-              :key="log.id"
-              :title="log.name"
-              :subtitle=" log.dateStart.toLocaleDateString()"
-            />
+          <v-list :loading="logsLoading">
+            <template v-if="logsLoading">
+              <v-skeleton-loader v-for="x in 4" :key="x" type="list-item" />
+            </template>
+            <template v-else>
+              <v-list-item
+                v-for="log in logs"
+                :key="log.id"
+                :title="log.name"
+                :subtitle=" log.dateStart.toLocaleDateString()"
+              />
+            </template>
           </v-list>
           <v-card-actions>
             <v-btn
