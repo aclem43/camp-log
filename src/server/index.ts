@@ -4,7 +4,7 @@ import express from 'express'
 import helmet from 'helmet'
 import compression from 'compression'
 import { api } from './plugins/remult'
-import { proc } from './config'
+import { isDev, proc } from './config'
 
 const app = express()
 const port = Number.parseInt(proc.env.PORT as string ?? 3000)
@@ -17,7 +17,12 @@ app.use(api)
 const frontendFiles = `${process.cwd()}/dist`
 
 app.get('/api/version', (_, res) => {
-  res.send(JSON.stringify({ version: proc.env.npm_package_version }))
+  let ver = proc.env.npm_package_version
+  if (isDev) {
+    ver = `${ver}-dev`
+    console.log(`[server] Version: ${ver}-dev`)
+  }
+  res.send(JSON.stringify({ version: ver }))
 })
 
 app.use(express.static(frontendFiles))
@@ -25,9 +30,6 @@ app.get('/*', (_, res) => {
   res.sendFile(`${frontendFiles}/index.html`)
 })
 
-const version = proc.env.npm_package_version
-
 app.listen(port, hostname, () => {
-  console.log(`[server] Version: ${version}`)
   console.log(`[server] Server is running on http://${hostname}:${port}`)
 })
