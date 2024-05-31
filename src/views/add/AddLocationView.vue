@@ -2,6 +2,7 @@
 import { mdiCampfire, mdiMapMarker } from '@mdi/js'
 import { ref } from 'vue'
 import { remult } from 'remult'
+import { useDisplay } from 'vuetify'
 import { Location, campTypes, campTypesToText, type campTypesType } from '@/shared/models/Location'
 import { showAlert } from '@/scripts/alert'
 
@@ -13,6 +14,10 @@ const location = ref<Omit<Location, 'id'>>({
   type: '2wdAcess',
   address: '',
 })
+
+const { mobile } = useDisplay()
+
+const showLongLat = ref(false)
 
 const campTypesText = campTypes.map((t) => { return { title: campTypesToText(t as campTypesType), value: t } })
 
@@ -55,7 +60,24 @@ async function addLog() {
             required
             variant="solo-filled"
             :prepend-inner-icon="mdiMapMarker"
+            hide-details
           />
+
+          <v-container>
+            <v-row>
+              <v-col>
+                <v-checkbox v-model="showLongLat" label="Show Long/Lat" hide-details density="compact" />
+              </v-col>
+            </v-row>
+            <v-row v-if="showLongLat" dense>
+              <v-col :cols="mobile ? 6 : 4">
+                <v-text-field v-model="location.longitude" density="compact" type="number" variant="solo-filled" label="Longitude " />
+              </v-col>
+              <v-col :cols="mobile ? 6 : 4">
+                <v-text-field v-model="location.latitude" density="compact" type="number" variant="solo-filled" label="Latitude" />
+              </v-col>
+            </v-row>
+          </v-container>
 
           <v-btn
             color="primary"

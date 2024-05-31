@@ -1,20 +1,18 @@
 <script setup>
 import { ref } from 'vue'
 
-const center = ref([40, 40])
 const projection = ref('EPSG:3857')
-const zoom = ref(8)
+const zoom = ref(4)
 const rotation = ref(0)
 </script>
 
 <template>
   <ol-map style="height: 100%">
     <ol-view
-      :center="center"
+      :center="[0, 0]"
       :rotation="rotation"
       :zoom="zoom"
       :projection="projection"
-      @change:rotation="rotationChanged"
     />
 
     <ol-tile-layer>
