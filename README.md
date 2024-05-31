@@ -11,4 +11,6 @@ This app was initially developed for a Venturer Scout SIA, but will likely be ex
 - Tags to keep track and search camps/locations
 - Account System
 
-  
+# Latest demo deployment
+The site is hosted for free on render, if its the first request to it in the first 15 minutes it might take up to a minute to start
+[Site on free render plan](http://camp-log.onrender.com/)
