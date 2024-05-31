@@ -38,10 +38,10 @@ onMounted(async () => {
             density="compact"
             :headers="[
               { title: 'Name', value: 'name', sortable: true },
-              { title: 'Description', value: 'description', sortable: true },
+              { title: 'Description', value: 'description', sortable: true, width: '200px' },
               { title: 'Location', value: 'location', sortable: true },
               { title: 'Start Date', value: 'dateStart', sortable: true },
-              { title: 'Actions', value: 'actions', sortable: false, width: '100px' },
+              { title: 'Actions', value: 'actions', sortable: false, width: '90px' },
             ]"
             :items="logs"
             :items-per-page="5"
