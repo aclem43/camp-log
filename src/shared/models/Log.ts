@@ -1,29 +1,33 @@
 import { Entity, Fields, Relations } from 'remult'
 import { Location } from './Location'
+import { User } from './User'
 
 @Entity('log', {
-  dbName: 'camp.log',
-  allowApiCrud: true,
+    dbName: 'camp.log',
+    allowApiCrud: true,
 })
 export class Log {
-  @Fields.autoIncrement()
+    @Fields.autoIncrement()
     id!: number
 
-  @Fields.string()
+    @Relations.toOne(() => User)
+    user?: User
+
+    @Fields.string()
     name = ''
 
-  @Fields.string()
+    @Fields.string()
     description = ''
 
-  @Fields.string()
+    @Fields.string()
     weather = ''
 
-  @Fields.date()
+    @Fields.date()
     dateStart = new Date()
 
-  @Fields.date()
+    @Fields.date()
     dateEnd?: Date | null
 
-  @Relations.toOne(() => Location)
+    @Relations.toOne(() => Location)
     location?: Location
 }
