@@ -1,21 +1,25 @@
 import { Entity, Fields, Relations } from 'remult'
 import { ActivityTemplate } from './ActivityTemplate'
 import { Log } from './Log'
+import { User } from './User'
 
 @Entity('activity', {
-  dbName: 'camp.activity',
-  allowApiCrud: true,
+    dbName: 'camp.activity',
+    allowApiCrud: true,
 })
 export class Activity {
-  @Fields.autoIncrement()
+    @Fields.autoIncrement()
     id!: number
 
-  @Relations.toOne(() => ActivityTemplate)
+    @Relations.toOne(() => User)
+    user?: User
+
+    @Relations.toOne(() => ActivityTemplate)
     template?: ActivityTemplate
 
-  @Relations.toOne(() => Log)
+    @Relations.toOne(() => Log)
     log?: Log
 
-  @Fields.number()
+    @Fields.number()
     value = 0
 }
