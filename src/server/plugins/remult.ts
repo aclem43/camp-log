@@ -9,28 +9,28 @@ import { Activity } from '../../shared/models/Activity'
 import { Location } from '../../shared/models/Location'
 import { ActivityTemplate } from '../../shared/models/ActivityTemplate'
 import { Log } from '../../shared/models/Log'
-import { User } from '@/shared/models/User'
+import { User } from '../../shared/models/User'
 
 let dataProvider
-if (proc.env.DATABASE_TYPE === "JSON") {
-    dataProvider = new JsonDataProvider(new JsonEntityFileStorage("./db"))
+if (proc.env.DATABASE_TYPE === 'JSON') {
+  dataProvider = new JsonDataProvider(new JsonEntityFileStorage('./db'))
 }
 else {
-    dataProvider = new SqlDatabase(new PostgresDataProvider(pool, {
-        orderByNullsFirst: false,
-    }))
+  dataProvider = new SqlDatabase(new PostgresDataProvider(pool, {
+    orderByNullsFirst: false,
+  }))
 }
 
 export const api = remultExpress(
-    {
-        admin: isDev,
-        entities: [
-            Activity,
-            ActivityTemplate,
-            Location,
-            Log,
-            User
-        ],
-        dataProvider,
-    },
+  {
+    admin: isDev,
+    entities: [
+      Activity,
+      ActivityTemplate,
+      Location,
+      Log,
+      User,
+    ],
+    dataProvider,
+  },
 )
