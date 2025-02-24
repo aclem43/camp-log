@@ -10,7 +10,7 @@ import { mdiArchive, mdiHistory, mdiHome, mdiMagnify, mdiMap, mdiMapMarker, mdiP
     <v-list density="compact" nav>
       <v-list-item :prepend-icon="mdiHome" title="Home" :to="{ name: 'home' }" />
       <v-list-item :prepend-icon="mdiMagnify" title="Search" :to="{ name: 'search' }" />
-      <v-list-group value="Add">
+      <v-list-group fluid value="Add">
         <template #activator="{ props }">
           <v-list-item
             v-bind="props"
