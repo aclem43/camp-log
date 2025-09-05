@@ -4,6 +4,7 @@ import { onMounted, ref } from 'vue'
 import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
 import { showAlert } from '@/scripts/alert'
 import { darkTheme } from '@/scripts/theme'
+import { getUser } from '@/scripts/user'
 
 const activityRepo = remult.repo(ActivityTemplate)
 
@@ -14,9 +15,9 @@ const activity = ref<Omit<ActivityTemplate, 'id'>>({
   description: '',
   unit: '',
 })
-
+const user = getUser()
 async function loadActivities() {
-  activityTemplates.value = await activityRepo.find()
+  activityTemplates.value = await activityRepo.find({ where: { user: user.value! } })
 }
 
 const version = ref('Loading')

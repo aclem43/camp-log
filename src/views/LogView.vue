@@ -4,6 +4,7 @@ import { onMounted, ref } from 'vue'
 import { mdiArrowLeft } from '@mdi/js'
 import { Log } from '@/shared/models/Log'
 import { Activity } from '@/shared/models/Activity'
+import { getUser } from '@/scripts/user'
 
 const props = defineProps<{
   id: number
@@ -12,9 +13,11 @@ const props = defineProps<{
 const log = ref<Log | null>(null)
 const activities = ref<Activity[]>([])
 
+const user = getUser()
+
 onMounted(async () => {
-  log.value = await remult.repo(Log).findOne({ where: { id: props.id }, include: { location: true } })
-  activities.value = await remult.repo(Activity).find({ where: { log: log.value }, include: { template: true } })
+  log.value = await remult.repo(Log).findOne({ where: { id: props.id , user: user.value! }, include: { location: true } })
+  activities.value = await remult.repo(Activity).find({ where: { log: log.value, user: user.value! }, include: { template: true } })
 })
 </script>
 

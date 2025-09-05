@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { logIn, register } from '@/scripts/user'
 
+const name = ref('')
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
@@ -15,6 +16,11 @@ const confirmPassword = ref('')
       </v-card-title>
       <v-card-text>
         <v-form>
+          <v-text-field
+            v-model="name"
+            label="Name"
+            required
+          />
           <v-text-field
             v-model="email"
             label="Email"

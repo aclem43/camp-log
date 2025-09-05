@@ -35,21 +35,24 @@ function locationToSearchResult(location: Location): SearchResult {
   }
 }
 
+import { getUser } from '@/scripts/user'
+const user = getUser()
+
 async function searchQuery() {
   const query = search.value
   loading.value = true
   searchResults.value = []
   if (query === '') {
-    const logResults = await logRepo.find({ limit: 10 })
-    const locationResults = await locationRepo.find({ limit: 10 })
+    const logResults = await logRepo.find({ limit: 10, where:{user:user.value!} })
+    const locationResults = await locationRepo.find({ limit: 10, where:{user:user.value!} })
     searchResults.value.push(...logResults.map(log => logToSearchResult(log)))
     searchResults.value.push(...locationResults.map(location => locationToSearchResult(location)))
     searchResults.value.sort((a, b) => a.title.localeCompare(b.title))
     loading.value = false
     return
   }
-  const logs = await logRepo.find({ where: { name: { $contains: query } } })
-  const locations = await locationRepo.find({ where: { name: { $contains: query } } })
+  const logs = await logRepo.find({ where: { name: { $contains: query }, user:user.value! } })
+  const locations = await locationRepo.find({ where: { name: { $contains: query }, user:user.value! } })
   const results = logs.map((log) => { return { title: log.name, subtitle: log.dateStart.toLocaleDateString() } })
   results.push(...locations.map((location) => { return { title: location.name, subtitle: location.address } }))
   results.sort((a, b) => a.title.localeCompare(b.title))

@@ -9,6 +9,9 @@ export class User {
     id!: number
 
     @Fields.string()
+    name!: string
+
+    @Fields.string()
     email!: string
 
     @Fields.string()
