@@ -3,13 +3,16 @@ import { remult } from 'remult'
 import { onMounted, ref } from 'vue'
 import { mdiDelete, mdiEye } from '@mdi/js'
 import { Log } from '@/shared/models/Log'
+import { getUser } from '@/scripts/user'
 
 const logs = ref<Log[]>([])
 
 const logRepo = remult.repo(Log)
 
+const user = getUser()
+
 async function load() {
-  logs.value = await logRepo.find({ include: { location: true } })
+  logs.value = await logRepo.find({where: { user: user.value! }, include: { location: true } })
 }
 
 async function deleteLog(log: Log) {

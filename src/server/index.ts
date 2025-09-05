@@ -33,12 +33,19 @@ app.get('/api/login', (req, res) => {
 app.post('/api/login', async (req, res) => {
   const userRepo = remult.repo(User)
   const user = await userRepo.find({ where: { email: req.body.email } })
+  let userFound = null
   for (const u of user) {
     if (u && u.password === req.body.password) {
       req.session!.user = { id: u.id, email: u.email }
-      res.send('Logged in')
+      userFound = u
       break
     }
+  }
+  if (userFound) {
+    res.json({ success: true, user: userFound })
+  }
+  else {
+    res.json({ success: false, message: 'Invalid email or password' })
   }
 })
 
