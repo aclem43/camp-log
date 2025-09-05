@@ -12,9 +12,6 @@ const alert = setupAlert()
 const { mobile } = useDisplay()
 
 const loggedIn = getLoggedIn()
-onMounted(async () => {
-  await initialize()
-})
 </script>
 
 <template>

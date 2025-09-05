@@ -77,3 +77,11 @@ export async function register(userData: {
   router.push({ name: 'home' })
   showAlert('Registered')
 }
+
+export async function logOut() {
+  await fetch('/api/logout')
+  loggedIn.value = false
+  user.value = null
+  router.push({ name: 'login' })
+  showAlert('Logged out')
+}
