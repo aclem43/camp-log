@@ -41,6 +41,14 @@ export class Location {
   @Fields.string()
     address = ''
 
+  @Fields.string()
+    city = ''
+  
+  @Fields.string()
+    state = ''
+  @Fields.string() 
+    country = ''
+
   @Fields.number()
     latitude?: number
 
