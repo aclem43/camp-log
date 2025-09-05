@@ -19,7 +19,12 @@ export function checkLogin() {
 
 export async function initialize() {
   loggedIn.value = false
-  loggedIn.value = remult.authenticated()
+  const resp = await fetch('/api/login')
+  const result = await resp.json()
+  if (result.loggedIn) {
+    user.value = await userRepo.findId(result.user.id)
+    loggedIn.value = true
+  }
 }
 
 export async function logIn(userData: {
@@ -38,7 +43,7 @@ export async function logIn(userData: {
     showAlert(result.message ?? 'Login failed')
     return
   }
-  user.value =await userRepo.findId(result.user.id)
+  user.value = await userRepo.findId(result.user.id)
   loggedIn.value = true
   router.push({ name: 'home' })
   showAlert('Logged in')
