@@ -8,7 +8,7 @@ import { remult, withRemult } from 'remult'
 import { User } from '../shared/models/User'
 import { api } from './plugins/remult'
 import { isDev, isProd, proc } from './config'
-
+import UserRoutes from './routes/user'
 const app = express()
 const port = Number.parseInt(proc.env.PORT as string ?? 3000)
 const hostname = proc.env.HOST ?? 'localhost'
@@ -24,35 +24,8 @@ app.get('/api/session', (req, res) => {
   // req.session!.user = { id: 'test', name: 'test' }
   // res.send('Logged in')
 })
+app.use('/api/',UserRoutes )
 
-app.get('/api/login', (req, res) => {
-  res.json({ loggedIn: !!req.session!.user, user: req.session!.user ?? null })
-})
-
-app.post('/api/login', async (req, res) => {
-  const userRepo = remult.repo(User)
-  const user = await userRepo.find({ where: { email: req.body.email } })
-  let userFound = null
-  for (const u of user) {
-    if (u && u.password === req.body.password) {
-      req.session!.user = { id: u.id, email: u.email }
-      userFound = u
-      break
-    }
-  }
-  if (userFound) {
-    res.json({ success: true, user: userFound })
-  }
-  else {
-    res.json({ success: false, message: 'Invalid email or password' })
-  }
-})
-
-app.get('/api/logout', (req, res) => {
-  req.session!.destroy(() => {
-    res.send('Logged out')
-  })
-})
 
 const frontendFiles = `${process.cwd()}/dist`
 

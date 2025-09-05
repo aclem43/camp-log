@@ -41,7 +41,7 @@ const confirmPassword = ref('')
           <div class="d-flex justify-space-between">
             <v-btn
               color="primary"
-              @click="register({ email, password })"
+              @click="() => register({ email, password ,name })"
             >
               Register
             </v-btn>

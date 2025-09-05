@@ -12,6 +12,8 @@ interface SearchResult {
   title: string
   subtitle: string
   icon?: string
+  id: number
+  type: 'log' | 'location'
 }
 
 const searchResults = ref<SearchResult[]>([])
@@ -25,6 +27,8 @@ function logToSearchResult(log: Log): SearchResult {
     title: log.name,
     subtitle: log.dateStart.toLocaleDateString(),
     icon: mdiCampfire,
+    id: log.id,
+    type: 'log',
   }
 }
 function locationToSearchResult(location: Location): SearchResult {
@@ -32,6 +36,8 @@ function locationToSearchResult(location: Location): SearchResult {
     title: location.name,
     subtitle: location.address,
     icon: mdiMapMarker,
+    id: location.id,
+    type: 'location',
   }
 }
 
@@ -53,8 +59,8 @@ async function searchQuery() {
   }
   const logs = await logRepo.find({ where: { name: { $contains: query }, user:user.value! } })
   const locations = await locationRepo.find({ where: { name: { $contains: query }, user:user.value! } })
-  const results = logs.map((log) => { return { title: log.name, subtitle: log.dateStart.toLocaleDateString() } })
-  results.push(...locations.map((location) => { return { title: location.name, subtitle: location.address } }))
+  const results = logs.map(logToSearchResult)
+  results.push(...locations.map(locationToSearchResult))
   results.sort((a, b) => a.title.localeCompare(b.title))
   searchResults.value.push(...results)
   loading.value = false
@@ -92,7 +98,7 @@ onMounted(() => {
             <v-skeleton-loader v-for="x in 4" :key="x" type="list-item" />
           </template>
           <template v-else>
-            <v-list-item v-for="result in searchResults" :key="result.title" :prepend-icon="result.icon" :title="result.title" :subtitle="result.subtitle" />
+            <v-list-item v-for="result in searchResults" :key="result.title" :prepend-icon="result.icon" :title="result.title" :subtitle="result.subtitle" :to="result.type === 'log' ? { name: 'log', params: { id: result.id } } : undefined" />
             <v-list-item v-if="searchResults.length === 0" title="No results found" />
           </template>
         </v-list>

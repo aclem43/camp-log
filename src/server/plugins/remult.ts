@@ -9,7 +9,7 @@ import { Activity } from '../../shared/models/Activity'
 import { Location } from '../../shared/models/Location'
 import { ActivityTemplate } from '../../shared/models/ActivityTemplate'
 import { Log } from '../../shared/models/Log'
-import { User } from '../../shared/models/User'
+import { User, UserPassword } from '../../shared/models/User'
 
 let dataProvider
 if (proc.env.DATABASE_TYPE === 'JSON') {
@@ -30,6 +30,7 @@ export const api = remultExpress(
       Location,
       Log,
       User,
+      UserPassword,
     ],
     getUser: async (req) => {
       // console.log(req)
