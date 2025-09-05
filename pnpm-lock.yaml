@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@maxel01/vue-leaflet':
+        specifier: 1.0.0-beta.1
+        version: 1.0.0-beta.1(leaflet@2.0.0-alpha)(vue@3.5.21(typescript@5.4.5))
       '@mdi/font':
         specifier: ^7.4.47
         version: 7.4.47
@@ -32,6 +35,9 @@ importers:
       helmet:
         specifier: ^7.2.0
         version: 7.2.0
+      leaflet:
+        specifier: 2.0.0-alpha
+        version: 2.0.0-alpha
       pg:
         specifier: ^8.16.3
         version: 8.16.3
@@ -561,6 +567,12 @@ packages:
 
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
+
+  '@maxel01/vue-leaflet@1.0.0-beta.1':
+    resolution: {integrity: sha512-e8x/DL5CBGv3rMaMX9O16AUGmrWcFkwg1wqtarYIdm1LzznoR/+0OcN10G21xl1u68Np1/Q1h+90lQkWDnO3Sw==}
+    peerDependencies:
+      leaflet: ^2.0.0-alpha
+      vue: ^3.5.0
 
   '@mdi/font@7.4.47':
     resolution: {integrity: sha512-43MtGpd585SNzHZPcYowu/84Vz2a2g31TvPMTm9uTiCSWzaheQySUcSyUH/46fPnuPQWof2yd0pGBtzee/IQWw==}
@@ -1936,6 +1948,9 @@ packages:
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
 
+  leaflet@2.0.0-alpha:
+    resolution: {integrity: sha512-RnEJ3UYcuHPFFsDq0e2/QovyIaR3hhwiQpq3wrKnvprA/lsiAJpcxvkRZL3UwQ2xnKm1r2pYcMa+rcSKVwEQag==}
+
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
@@ -2538,6 +2553,9 @@ packages:
     peerDependencies:
       typescript: '>=4.8.4'
 
+  ts-debounce@4.0.0:
+    resolution: {integrity: sha512-+1iDGY6NmOGidq7i7xZGA4cm8DAa6fqdYcvO5Z6yBevH++Bdo9Qt/mN0TzHUgcCcKv1gmh9+W5dHqz8pMWbCbg==}
+
   ts-declaration-location@1.0.7:
     resolution: {integrity: sha512-EDyGAwH1gO0Ausm9gV6T2nUvBgXT5kGoCMJPllOaooZ+4VvJiKBdZE7wK18N1deEowhcUptS+5GXZK8U/fvpwA==}
     peerDependencies:
@@ -3106,6 +3124,12 @@ snapshots:
       '@isaacs/balanced-match': 4.0.1
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
+
+  '@maxel01/vue-leaflet@1.0.0-beta.1(leaflet@2.0.0-alpha)(vue@3.5.21(typescript@5.4.5))':
+    dependencies:
+      leaflet: 2.0.0-alpha
+      ts-debounce: 4.0.0
+      vue: 3.5.21(typescript@5.4.5)
 
   '@mdi/font@7.4.47': {}
 
@@ -4633,6 +4657,8 @@ snapshots:
     dependencies:
       json-buffer: 3.0.1
 
+  leaflet@2.0.0-alpha: {}
+
   levn@0.4.1:
     dependencies:
       prelude-ls: 1.2.1
@@ -5230,6 +5256,8 @@ snapshots:
   ts-api-utils@2.1.0(typescript@5.4.5):
     dependencies:
       typescript: 5.4.5
+
+  ts-debounce@4.0.0: {}
 
   ts-declaration-location@1.0.7(typescript@5.4.5):
     dependencies:
