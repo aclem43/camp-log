@@ -26,8 +26,7 @@ app.get('/api/session', (req, res) => {
 })
 
 app.get('/api/login', (req, res) => {
-  req.session!.user = { id: 'test', email: 'test' }
-  res.send('Logged in')
+  res.json({ loggedIn: !!req.session!.user, user: req.session!.user ?? null })
 })
 
 app.post('/api/login', async (req, res) => {

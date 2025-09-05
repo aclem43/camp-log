@@ -1,9 +1,16 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { logIn } from '@/scripts/user'
+import { onMounted, ref } from 'vue'
+import { checkLogin, logIn } from '@/scripts/user'
+import router from '@/router'
 
 const email = ref('')
 const password = ref('')
+
+onMounted(() => {
+  if (checkLogin()) {
+    router.push({ name: 'home' })
+  }
+})
 </script>
 
 <template>
