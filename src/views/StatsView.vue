@@ -3,9 +3,10 @@ import { onMounted, ref } from 'vue'
 import { remult } from 'remult'
 import { Activity } from '@/shared/models/Activity'
 import type { ActivityTemplate } from '@/shared/models/ActivityTemplate'
+import { getUser } from '@/scripts/user'
 
 const activities = ref<Activity[]>([])
-
+const user = getUser()
 interface Stat {
   template: ActivityTemplate
   value: number
@@ -27,7 +28,7 @@ function laodStats() {
 }
 
 onMounted(async () => {
-  activities.value = await remult.repo(Activity).find({ include: { template: true } })
+  activities.value = await remult.repo(Activity).find({where: { user: user.value! }, include: { template: true } })
   laodStats()
 })
 </script>

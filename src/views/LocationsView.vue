@@ -3,11 +3,12 @@ import { onMounted, ref } from 'vue'
 import { remult } from 'remult'
 import { mdiDelete, mdiEye } from '@mdi/js'
 import { Location } from '@/shared/models/Location'
+import { getUser } from '@/scripts/user'
 
 const locations = ref<Location[]>([])
-
+const user = getUser()
 async function loadLocations() {
-  locations.value = await remult.repo(Location).find({})
+  locations.value = await remult.repo(Location).find({where: {user:user.value!}, orderBy: { name: 'asc' } } )
 }
 
 onMounted(async () => {
