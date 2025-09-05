@@ -1,4 +1,5 @@
-import { Entity, Fields } from 'remult'
+import { Entity, Fields, Relations } from 'remult'
+import { User } from './User'
 
 export const campTypes = ['remote', '2wdAcess', '4wdAcess', 'bushCamp']
 
@@ -24,6 +25,9 @@ export function campTypesToText(campType: campTypesType) {
 export class Location {
   @Fields.autoIncrement()
     id!: number
+
+  @Relations.toOne(() => User)
+    user?: User
 
   @Fields.string()
     name = ''
