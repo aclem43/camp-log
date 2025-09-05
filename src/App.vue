@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
 import { useDisplay } from 'vuetify'
+import { onMounted } from 'vue'
 import BottomBar from './components/BottomBar.vue'
 import { setupAlert } from './scripts/alert'
 import { darkTheme } from './scripts/theme'
 import NavBar from './components/NavBar.vue'
-import { getLoggedIn } from './scripts/user'
+import { getLoggedIn, initialize } from './scripts/user'
 
 const alert = setupAlert()
 const { mobile } = useDisplay()
 
 const loggedIn = getLoggedIn()
+onMounted(async () => {
+  await initialize()
+})
 </script>
 
 <template>
