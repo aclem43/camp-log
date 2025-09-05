@@ -31,6 +31,13 @@ export const api = remultExpress(
       Log,
       User,
     ],
+    getUser: async (req) => {
+      // console.log(req)
+      if (req.session !== undefined && req.session.user) {
+        return req.session!.user as UserInfo
+      }
+      return undefined
+    },
     dataProvider,
   },
 )

@@ -28,7 +28,7 @@ const password = ref('')
           <div class="d-flex justify-space-between">
             <v-btn
               color="primary"
-              @click="logIn({ email, password })"
+              @click="() => logIn({ email, password })"
             >
               Login
             </v-btn>

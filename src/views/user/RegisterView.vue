@@ -37,7 +37,7 @@ const confirmPassword = ref('')
               color="primary"
               @click="register({ email, password })"
             >
-              Login
+              Register
             </v-btn>
             <div>
               Alread have an account?
