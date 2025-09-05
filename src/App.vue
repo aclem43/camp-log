@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
 import { useDisplay } from 'vuetify'
+import { onMounted } from 'vue'
 import BottomBar from './components/BottomBar.vue'
 import { setupAlert } from './scripts/alert'
 import { darkTheme } from './scripts/theme'
 import NavBar from './components/NavBar.vue'
+import { getLoggedIn, initialize } from './scripts/user'
 
 const alert = setupAlert()
 const { mobile } = useDisplay()
+
+const loggedIn = getLoggedIn()
 </script>
 
 <template>
@@ -15,8 +19,8 @@ const { mobile } = useDisplay()
     <v-main>
       <RouterView />
     </v-main>
-    <BottomBar v-if="mobile" />
-    <NavBar v-else />
+    <BottomBar v-if="mobile && loggedIn" />
+    <NavBar v-else-if="loggedIn" />
     <v-snackbar v-model="alert.show" :timeout="alert.duration" variant="flat">
       {{ alert.message }}
       <template #actions>

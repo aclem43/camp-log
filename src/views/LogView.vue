@@ -4,6 +4,8 @@ import { onMounted, ref } from 'vue'
 import { mdiArrowLeft } from '@mdi/js'
 import { Log } from '@/shared/models/Log'
 import { Activity } from '@/shared/models/Activity'
+import { getUser } from '@/scripts/user'
+import router from '@/router'
 
 const props = defineProps<{
   id: number
@@ -12,9 +14,11 @@ const props = defineProps<{
 const log = ref<Log | null>(null)
 const activities = ref<Activity[]>([])
 
+const user = getUser()
+
 onMounted(async () => {
-  log.value = await remult.repo(Log).findOne({ where: { id: props.id }, include: { location: true } })
-  activities.value = await remult.repo(Activity).find({ where: { log: log.value }, include: { template: true } })
+  log.value = await remult.repo(Log).findOne({ where: { id: props.id , user: user.value! }, include: { location: true } })
+  activities.value = await remult.repo(Activity).find({ where: { log: log.value, user: user.value! }, include: { template: true } })
 })
 </script>
 
@@ -23,7 +27,7 @@ onMounted(async () => {
     <v-col>
       <v-card>
         <v-card-title class="d-flex align-center ga-4">
-          <v-btn :to="{ name: 'logs' }" size="small" color="primary">
+          <v-btn @click="router.back()" size="small" color="primary">
             <v-icon :icon="mdiArrowLeft" />
           </v-btn> {{ log?.name }}
         </v-card-title>

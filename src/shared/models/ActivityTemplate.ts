@@ -1,19 +1,23 @@
 import { Entity, Fields, Relations } from 'remult'
+import { User } from './User'
 
 @Entity('activityTemplate', {
-  dbName: 'camp.activityTemplate',
-  allowApiCrud: true,
+    dbName: 'camp.activityTemplate',
+    allowApiCrud: true,
 })
 export class ActivityTemplate {
-  @Fields.autoIncrement()
+    @Fields.autoIncrement()
     id!: number
 
-  @Fields.string()
+    @Relations.toOne(() => User)
+    user?: User
+
+    @Fields.string()
     name = ''
 
-  @Fields.string()
+    @Fields.string()
     description = ''
 
-  @Fields.string()
+    @Fields.string()
     unit = ''
 }
