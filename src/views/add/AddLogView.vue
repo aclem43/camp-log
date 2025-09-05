@@ -9,6 +9,7 @@ import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
 import { Log } from '@/shared/models/Log'
 import { showAlert } from '@/scripts/alert'
 import { Activity } from '@/shared/models/Activity'
+import { getUser } from '@/scripts/user'
 
 const log = ref<Omit<Log, 'id' >>({
   name: '',
@@ -19,6 +20,7 @@ const log = ref<Omit<Log, 'id' >>({
 
 })
 
+const user = getUser()
 const { mobile } = useDisplay()
 const locations = ref<Location[]>([])
 const oneDay = ref(false)
@@ -29,8 +31,8 @@ const currentlySelectedActivity = ref<ActivityTemplate | null>(null)
 const activities = ref<ActivityTemplate[]>([])
 
 onMounted(async () => {
-  locations.value = await remult.repo(Location).find({ limit: 5 })
-  activities.value = await remult.repo(ActivityTemplate).find()
+  locations.value = await remult.repo(Location).find({ where: { user: user.value! }, limit: 5 })
+  activities.value = await remult.repo(ActivityTemplate).find({ where: { user: user.value! }, orderBy: { name: 'asc' }})
 })
 
 const checkIncludesActivity = (activity: ActivityTemplate) => selectedActivities.value.some(a => a.template.id === activity.id)

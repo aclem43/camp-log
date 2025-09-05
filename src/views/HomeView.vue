@@ -4,21 +4,24 @@ import { remult } from 'remult'
 import { onMounted, ref } from 'vue'
 import { Location } from '@/shared/models/Location'
 import { Log } from '@/shared/models/Log'
+import { getUser } from '@/scripts/user'
 
 const locations = ref<Location[]>([])
 const locationsLoading = ref(false)
 const logs = ref<Log[]>([])
 const logsLoading = ref(false)
 
+const user = getUser()
+
 async function loadLocations() {
   locationsLoading.value = true
-  locations.value = await remult.repo(Location).find({ limit: 5 })
+  locations.value = await remult.repo(Location).find({where: {user: user.value!}, limit: 5 })
   locationsLoading.value = false
 }
 
 async function loadLogs() {
   logsLoading.value = true
-  logs.value = await remult.repo(Log).find({ limit: 5, orderBy: { dateStart: 'desc' }, include: { location: true } })
+  logs.value = await remult.repo(Log).find({ where: { user: user.value! }, limit: 5, orderBy: { dateStart: 'desc' }, include: { location: true } })
   logsLoading.value = false
 }
 
@@ -36,7 +39,7 @@ onMounted(async () => {
           <v-card-title class="d-flex ga-4 justify-space-between">
             <div>
               <v-icon size="32" :icon="mdiAccount" />
-              Welcome, User
+              Welcome, {{ user?.name || 'No Name Set' }}!
             </div>
             <div>
               <v-btn
