@@ -3,6 +3,7 @@ import { Router } from 'express'
 import { remult } from 'remult'
 import crypto from 'node:crypto'
 const router: Router = Router()
+
 router.get('/login', (req, res) => {
     res.json({ loggedIn: !!req.session!.user, user: req.session!.user ?? null })
 })
