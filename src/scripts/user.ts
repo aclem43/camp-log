@@ -54,8 +54,26 @@ export async function logIn(userData: {
 export async function register(userData: {
   email: string
   password: string
+  name: string
 }) {
-  showAlert('Registered')
+  if (userData.password.length < 6) {
+    showAlert('Password must be at least 6 characters')
+    return
+  }
+  const resp = await fetch('/api/register', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(userData),
+  })
+  const result = await resp.json()
+  if (!result.success) {
+    showAlert(result.message ?? 'Registration failed')
+    return
+  }
+  user.value = await userRepo.findId(result.user.id)
   loggedIn.value = true
   router.push({ name: 'home' })
+  showAlert('Registered')
 }

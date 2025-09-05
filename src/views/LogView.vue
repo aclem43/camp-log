@@ -5,6 +5,7 @@ import { mdiArrowLeft } from '@mdi/js'
 import { Log } from '@/shared/models/Log'
 import { Activity } from '@/shared/models/Activity'
 import { getUser } from '@/scripts/user'
+import router from '@/router'
 
 const props = defineProps<{
   id: number
@@ -26,7 +27,7 @@ onMounted(async () => {
     <v-col>
       <v-card>
         <v-card-title class="d-flex align-center ga-4">
-          <v-btn :to="{ name: 'logs' }" size="small" color="primary">
+          <v-btn @click="router.back()" size="small" color="primary">
             <v-icon :icon="mdiArrowLeft" />
           </v-btn> {{ log?.name }}
         </v-card-title>

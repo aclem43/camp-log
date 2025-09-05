@@ -14,6 +14,22 @@ export class User {
     @Fields.string()
     email!: string
 
+
+    @Relations.toOne(() => UserPassword)
+    password!: UserPassword
+}
+
+@Entity('userPwd', {
+    dbName: 'camp.userPwd',
+    allowApiCrud: true,
+})
+export class UserPassword {
+    @Fields.autoIncrement()
+    id!: number
+
     @Fields.string()
-    password!: string
+    salt!: string
+
+    @Fields.string()
+    hash!: string
 }
