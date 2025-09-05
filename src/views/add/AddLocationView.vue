@@ -4,6 +4,9 @@ import { computed, ref } from 'vue'
 import { remult } from 'remult'
 import { Location, campTypes, campTypesToText, type campTypesType } from '@/shared/models/Location'
 import { showAlert } from '@/scripts/alert'
+import { getUser } from '@/scripts/user'
+
+const user = getUser()
 
 const location = ref<Omit<Location, 'id'>>({
   name: '',
@@ -15,6 +18,7 @@ const location = ref<Omit<Location, 'id'>>({
   city: '',
   state: '',
   country: '',
+  user:user.value!,
 })
 
 const campTypesText = campTypes.map((t) => { return { title: campTypesToText(t as campTypesType), value: t } })
