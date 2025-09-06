@@ -2,7 +2,7 @@ import { readonly, ref } from 'vue'
 import { remult } from 'remult'
 import { showAlert } from './alert'
 import router from '@/router'
-import { User } from '@/shared/models/User'
+import { User } from '@/shared/models/user/User'
 
 const loggedIn = ref(false)
 const user = ref<User | null>(null)
