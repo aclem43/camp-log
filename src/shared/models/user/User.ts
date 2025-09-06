@@ -1,4 +1,5 @@
 import { Entity, Fields, Relations } from 'remult'
+import { UserPassword } from './UserPassword'
 
 @Entity('user', {
     dbName: 'camp.user',
@@ -17,19 +18,4 @@ export class User {
 
     @Relations.toOne(() => UserPassword)
     password!: UserPassword
-}
-
-@Entity('userPwd', {
-    dbName: 'camp.userPwd',
-    allowApiCrud: true,
-})
-export class UserPassword {
-    @Fields.autoIncrement()
-    id!: number
-
-    @Fields.string()
-    salt!: string
-
-    @Fields.string()
-    hash!: string
 }

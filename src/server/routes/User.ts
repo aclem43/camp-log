@@ -1,7 +1,8 @@
-import { User, UserPassword } from '../../shared/models/User'
+import { User } from '../../shared/models/user/User'
 import { Router } from 'express'
 import { remult } from 'remult'
 import crypto from 'node:crypto'
+import { UserPassword } from "../../shared/models/user/UserPassword";
 const router: Router = Router()
 
 router.get('/login', (req, res) => {

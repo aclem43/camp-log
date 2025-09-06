@@ -1,6 +1,6 @@
 import { Entity, Fields, Relations } from 'remult'
 import { Location } from './Location'
-import { User } from './User'
+import { User } from './user/User'
 
 @Entity('log', {
     dbName: 'camp.log',

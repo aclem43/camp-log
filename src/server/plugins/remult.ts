@@ -9,7 +9,8 @@ import { Activity } from '../../shared/models/Activity'
 import { Location } from '../../shared/models/Location'
 import { ActivityTemplate } from '../../shared/models/ActivityTemplate'
 import { Log } from '../../shared/models/Log'
-import { User, UserPassword } from '../../shared/models/User'
+import { User } from '../../shared/models/user/User'
+import { UserPassword } from '../../shared/models/user/UserPassword'
 
 let dataProvider
 if (proc.env.DATABASE_TYPE === 'JSON') {
