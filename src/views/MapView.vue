@@ -6,7 +6,7 @@ import { LControlLayers, LIcon, LLayerGroup, LMap, LMarker, LPopup, LTileLayer }
 import { onMounted, ref } from 'vue'
 import { remult } from 'remult'
 import { getUser } from '@/scripts/user'
-import { Location, campTypesToColor } from '@/shared/models/Location'
+import { Location, campTypes, campTypesToColor, campTypesToText, type campTypesType } from '@/shared/models/Location'
 
 const zoom = ref(6)
 const center = ref<[number, number]>([47.41322, -1.219482])
@@ -24,7 +24,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div style="height: 100%; width: 100%;" >
+  <div style="height: 100%; width: 100%; position: relative;">
     <LMap v-model:zoom="zoom" :center="center">
       <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" layer-type="base" name="OpenStreetMap" />
       <LLayerGroup name="Locations" layer-type="overlay">
@@ -34,11 +34,23 @@ onMounted(async () => {
               <svg viewBox="0 0 24 24"><path :d="mdiTent" /></svg>
             </div>
           </LIcon>
-          <LPopup ><strong>{{ loc.name }} </strong><br />{{ loc.address }}</LPopup>
+          <LPopup>
+            <strong>{{ loc.name }}</strong><br>{{ loc.address }}<br>
+            <router-link :to="{ name: 'location', params: { id: loc.id } }">
+              View / Edit
+            </router-link>
+          </LPopup>
         </LMarker>
         <LControlLayers />
       </LLayerGroup>
     </LMap>
+
+    <div class="map-legend">
+      <div v-for="type in campTypes" :key="type" class="map-legend-item">
+        <span class="map-legend-swatch" :style="{ backgroundColor: campTypesToColor(type as campTypesType) }" />
+        {{ campTypesToText(type as campTypesType) }}
+      </div>
+    </div>
   </div>
   <!-- <v-empty-state
     :icon="mdiMap"
@@ -74,5 +86,36 @@ onMounted(async () => {
   width: 18px;
   height: 18px;
   fill: white;
+}
+
+.map-legend {
+  position: absolute;
+  bottom: 24px;
+  left: 12px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: white;
+  color: #333;
+  font-size: 13px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.map-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-legend-swatch {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid white;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
 }
 </style>

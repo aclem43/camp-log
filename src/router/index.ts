@@ -32,6 +32,12 @@ const router = createRouter({
       component: () => import('../views/LocationsView.vue'),
     },
     {
+      path: '/location/:id',
+      name: 'location',
+      props: (route) => { return { id: Number(route.params.id) } },
+      component: () => import('../views/LocationView.vue'),
+    },
+    {
       path: '/logs',
       name: 'logs',
       component: () => import('../views/LogsView.vue'),

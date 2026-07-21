@@ -98,7 +98,7 @@ onMounted(() => {
             <v-skeleton-loader v-for="x in 4" :key="x" type="list-item" />
           </template>
           <template v-else>
-            <v-list-item v-for="result in searchResults" :key="result.title" :prepend-icon="result.icon" :title="result.title" :subtitle="result.subtitle" :to="result.type === 'log' ? { name: 'log', params: { id: result.id } } : undefined" />
+            <v-list-item v-for="result in searchResults" :key="result.title" :prepend-icon="result.icon" :title="result.title" :subtitle="result.subtitle" :to="{ name: result.type, params: { id: result.id } }" />
             <v-list-item v-if="searchResults.length === 0" title="No results found" />
           </template>
         </v-list>

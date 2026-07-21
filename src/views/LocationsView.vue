@@ -54,6 +54,9 @@ async function deleteLocation(location: Location) {
             >
               <template #[`item.actions`]="{ item }">
                 <div class="d-flex ga-2 align-center justify-center">
+                  <v-btn density="compact" color="primary" :to="`/location/${item.id}`">
+                    <v-icon :icon="mdiEye" />
+                  </v-btn>
                   <v-btn density="compact" color="error" @click="deleteLocation(item)">
                     <v-icon :icon="mdiDelete" />
                   </v-btn>
