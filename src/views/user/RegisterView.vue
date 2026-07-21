@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { logIn, register } from '@/scripts/user'
+import { mdiGoogle } from '@mdi/js'
+import { logInWithGoogle, register } from '@/scripts/user'
 
 const name = ref('')
 const email = ref('')
@@ -41,7 +42,7 @@ const confirmPassword = ref('')
           <div class="d-flex justify-space-between">
             <v-btn
               color="primary"
-              @click="() => register({ email, password ,name })"
+              @click="() => register({ email, password, name })"
             >
               Register
             </v-btn>
@@ -52,6 +53,15 @@ const confirmPassword = ref('')
               </router-link>
             </div>
           </div>
+          <v-divider class="my-4" />
+          <v-btn
+            block
+            variant="outlined"
+            :prepend-icon="mdiGoogle"
+            @click="logInWithGoogle"
+          >
+            Sign in with Google
+          </v-btn>
         </v-form>
       </v-card-text>
     </v-card>

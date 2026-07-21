@@ -75,6 +75,15 @@ export async function register(userData: {
   showAlert('Registered')
 }
 
+export async function logInWithGoogle() {
+  const { error } = await authClient.signIn.social({
+    provider: 'google',
+    callbackURL: window.location.origin,
+  })
+  if (error)
+    showAlert(error.message ?? 'Google sign-in failed')
+}
+
 export async function logOut() {
   await authClient.signOut()
   loggedIn.value = false
