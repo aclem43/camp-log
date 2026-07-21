@@ -51,28 +51,39 @@ const info = ref<{ city: string, state: string, country: string } | null>(null)
 
 async function findAddress() {
   findingAddress.value = true
-  // Use opencage api to find address
-  const resp = await fetch('/api/geocode', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ address: location.value.address }),
-  })
-  const result = await resp.json()
 
-  latLong.value = {
-    lat: result.latitude,
-    lng: result.longitude,
+  try {
+    const resp = await fetch('/api/geocode', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ address: location.value.address }),
+    })
+    const result = await resp.json()
+
+    if (!resp.ok) {
+      showAlert(result.message ?? 'Failed to find address')
+      return
+    }
+
+    latLong.value = {
+      lat: result.latitude,
+      lng: result.longitude,
+    }
+
+    info.value = {
+      city: result.info.city,
+      state: result.info.state,
+      country: result.info.country,
+    }
   }
-
-  info.value = {
-    city: result.info.city,
-    state: result.info.state,
-    country: result.info.country,
+  catch {
+    showAlert('Failed to find address')
   }
-
-  findingAddress.value = false
+  finally {
+    findingAddress.value = false
+  }
 }
 </script>
 
