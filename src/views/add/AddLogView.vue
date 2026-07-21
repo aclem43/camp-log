@@ -16,7 +16,7 @@ const log = ref<Omit<Log, 'id' >>({
   description: '',
   weather: '',
   dateStart: new Date(),
-  dateEnd: null,
+  dateEnd: undefined,
 
 })
 
@@ -32,7 +32,7 @@ const activities = ref<ActivityTemplate[]>([])
 
 onMounted(async () => {
   locations.value = await remult.repo(Location).find({ where: { user: user.value! }, limit: 5 })
-  activities.value = await remult.repo(ActivityTemplate).find({ where: { user: user.value! }, orderBy: { name: 'asc' }})
+  activities.value = await remult.repo(ActivityTemplate).find({ where: { user: user.value! }, orderBy: { name: 'asc' } })
 })
 
 const checkIncludesActivity = (activity: ActivityTemplate) => selectedActivities.value.some(a => a.template.id === activity.id)

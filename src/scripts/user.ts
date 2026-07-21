@@ -1,8 +1,11 @@
 import { readonly, ref } from 'vue'
 import { remult } from 'remult'
+import { createAuthClient } from 'better-auth/vue'
 import { showAlert } from './alert'
 import router from '@/router'
-import { User } from '@/shared/models/user/User'
+import { User } from '@/shared/models/auth/User'
+
+const authClient = createAuthClient()
 
 const loggedIn = ref(false)
 const user = ref<User | null>(null)
@@ -17,38 +20,40 @@ export function checkLogin() {
   return loggedIn.value
 }
 
-export async function initialize() {
-  loggedIn.value = false
-  const resp = await fetch('/api/login')
-  const result = await resp.json()
-  if (result.loggedIn) {
-    user.value = await userRepo.findId(result.user.id)
+async function hydrateFromSession() {
+  const { data } = await authClient.getSession()
+  if (data?.user) {
+    user.value = (await userRepo.findId(data.user.id)) ?? null
     loggedIn.value = true
   }
+}
+
+let readyPromise: Promise<void> | null = null
+
+export function initialize() {
+  loggedIn.value = false
+  readyPromise = hydrateFromSession()
+  return readyPromise
+}
+
+// Router guards run their first check independently of when main.ts's
+// initialize() call settles, so they must explicitly wait on this.
+export function whenReady() {
+  return readyPromise ?? Promise.resolve()
 }
 
 export async function logIn(userData: {
   email: string
   password: string
 }) {
-  const resp = await fetch('/api/login', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(userData),
-  })
-  const result = await resp.json()
-  if (!result.success) {
-    showAlert(result.message ?? 'Login failed')
+  const { error } = await authClient.signIn.email(userData)
+  if (error) {
+    showAlert(error.message ?? 'Login failed')
     return
   }
-  user.value = await userRepo.findId(result.user.id)
-  loggedIn.value = true
+  await hydrateFromSession()
   router.push({ name: 'home' })
   showAlert('Logged in')
-
-  // }
 }
 
 export async function register(userData: {
@@ -60,26 +65,18 @@ export async function register(userData: {
     showAlert('Password must be at least 6 characters')
     return
   }
-  const resp = await fetch('/api/register', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(userData),
-  })
-  const result = await resp.json()
-  if (!result.success) {
-    showAlert(result.message ?? 'Registration failed')
+  const { error } = await authClient.signUp.email(userData)
+  if (error) {
+    showAlert(error.message ?? 'Registration failed')
     return
   }
-  user.value = await userRepo.findId(result.user.id)
-  loggedIn.value = true
+  await hydrateFromSession()
   router.push({ name: 'home' })
   showAlert('Registered')
 }
 
 export async function logOut() {
-  await fetch('/api/logout')
+  await authClient.signOut()
   loggedIn.value = false
   user.value = null
   router.push({ name: 'login' })

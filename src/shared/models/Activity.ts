@@ -1,7 +1,7 @@
 import { Entity, Fields, Relations } from 'remult'
 import { ActivityTemplate } from './ActivityTemplate'
 import { Log } from './Log'
-import { User } from './user/User'
+import { User } from './auth/User'
 
 @Entity('activity', {
     dbName: 'camp.activity',

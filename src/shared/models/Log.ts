@@ -1,6 +1,6 @@
 import { Entity, Fields, Relations } from 'remult'
 import { Location } from './Location'
-import { User } from './user/User'
+import { User } from './auth/User'
 
 @Entity('log', {
     dbName: 'camp.log',
@@ -26,7 +26,7 @@ export class Log {
     dateStart = new Date()
 
     @Fields.date()
-    dateEnd?: Date | null
+    dateEnd?: Date
 
     @Relations.toOne(() => Location)
     location?: Location

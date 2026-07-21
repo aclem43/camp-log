@@ -1,5 +1,5 @@
 import { Entity, Fields, Relations } from 'remult'
-import { User } from './user/User'
+import { User } from './auth/User'
 
 export const campTypes = ['remote', '2wdAcess', '4wdAcess', 'bushCamp']
 

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
-import { checkLogin, getLoggedIn } from '@/scripts/user'
+import { checkLogin, getLoggedIn, whenReady } from '@/scripts/user'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -75,7 +75,8 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
+  await whenReady()
   if (to.meta.authNotRequired) {
     next()
   }
