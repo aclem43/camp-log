@@ -3,12 +3,13 @@ import process from 'node:process'
 import express from 'express'
 import helmet from 'helmet'
 import compression from 'compression'
-import session from 'express-session'
+import { toNodeHandler } from 'better-auth/node'
 import { remult, withRemult } from 'remult'
 import { api } from './plugins/remult'
+import { auth } from './auth'
 import { isDev, isProd, proc } from './config'
-import UserRoutes from './routes/user'
 import GeocodeRoutes from './routes/geocode'
+
 const app = express()
 const port = Number.parseInt(proc.env.PORT as string ?? 3000)
 const hostname = proc.env.HOST ?? 'localhost'
@@ -16,15 +17,9 @@ const hostname = proc.env.HOST ?? 'localhost'
 // app.use(helmet())
 // app.use(compression())
 
-app.use(session({ secret: proc.env.SESSION_SECRET!, cookie: { maxAge: 86400000 }, resave: true, saveUninitialized: true }))
+app.all('/api/auth/*', toNodeHandler(auth))
 app.use(api)
 app.use(api.withRemult)
-app.get('/api/session', (req, res) => {
-  res.json(req.session)
-  // req.session!.user = { id: 'test', name: 'test' }
-  // res.send('Logged in')
-})
-app.use('/api/', UserRoutes)
 app.use('/api/', GeocodeRoutes)
 
 const frontendFiles = `${process.cwd()}/dist`

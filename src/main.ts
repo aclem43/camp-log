@@ -14,5 +14,4 @@ app.use(vuetify)
 
 initialize()
 
-
 app.mount('#app')

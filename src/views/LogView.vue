@@ -17,8 +17,8 @@ const activities = ref<Activity[]>([])
 const user = getUser()
 
 onMounted(async () => {
-  log.value = await remult.repo(Log).findOne({ where: { id: props.id , user: user.value! }, include: { location: true } })
-  activities.value = await remult.repo(Activity).find({ where: { log: log.value, user: user.value! }, include: { template: true } })
+  log.value = (await remult.repo(Log).findOne({ where: { id: props.id, user: user.value! }, include: { location: true } })) ?? null
+  activities.value = await remult.repo(Activity).find({ where: { log: log.value ?? undefined, user: user.value! }, include: { template: true } })
 })
 </script>
 
@@ -27,7 +27,7 @@ onMounted(async () => {
     <v-col>
       <v-card>
         <v-card-title class="d-flex align-center ga-4">
-          <v-btn @click="router.back()" size="small" color="primary">
+          <v-btn size="small" color="primary" @click="router.back()">
             <v-icon :icon="mdiArrowLeft" />
           </v-btn> {{ log?.name }}
         </v-card-title>
