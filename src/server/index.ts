@@ -24,8 +24,8 @@ app.get('/api/session', (req, res) => {
   // req.session!.user = { id: 'test', name: 'test' }
   // res.send('Logged in')
 })
-app.use('/api/',UserRoutes )
-app.use('/api/', GeocodeRoutes )
+app.use('/api/', UserRoutes)
+app.use('/api/', GeocodeRoutes)
 
 const frontendFiles = `${process.cwd()}/dist`
 
