@@ -18,7 +18,7 @@ const location = ref<Omit<Location, 'id'>>({
   city: '',
   state: '',
   country: '',
-  user:user.value!,
+  user: user.value!,
 })
 
 const campTypesText = campTypes.map((t) => { return { title: campTypesToText(t as campTypesType), value: t } })
@@ -46,8 +46,8 @@ const findDisabled = computed(() => {
   return location.value.address.length === 0
 })
 
-const latLong = ref<{ lat: number; lng: number } | null>(null)
-const info = ref<{ city: string; state: string; country: string } | null>(null)
+const latLong = ref<{ lat: number, lng: number } | null>(null)
+const info = ref<{ city: string, state: string, country: string } | null>(null)
 
 async function findAddress() {
   findingAddress.value = true
@@ -86,20 +86,23 @@ async function findAddress() {
 
         <v-card-text>
           <div class="d-flex flex-column ga-6">
-            <v-text-field hide-details v-model="location.name" label="Name" required variant="solo-filled" />
-            <v-textarea hide-details v-model="location.notes" label="Notes" required variant="solo-filled" />
-            <v-select hide-details v-model="location.type" label="Type" required :items="campTypesText"
+            <v-text-field v-model="location.name" hide-details label="Name" required variant="solo-filled" />
+            <v-textarea v-model="location.notes" hide-details label="Notes" required variant="solo-filled" />
+            <v-select v-model="location.type" hide-details label="Type" required :items="campTypesText"
               variant="solo-filled" :prepend-inner-icon="mdiCampfire" />
             <div class="d-flex align-center ga-4">
-              <v-text-field hide-details v-model="location.address" label="Address" required variant="solo-filled"
+              <v-text-field v-model="location.address" hide-details label="Address" required variant="solo-filled"
                 :prepend-inner-icon="mdiMapMarker" />
-              <v-btn size="large" color="primary" :disabled="findDisabled" @click="findAddress"> Find
+              <v-btn size="large" color="primary" :disabled="findDisabled" @click="findAddress">
+                Find
               </v-btn>
             </div>
             <div v-if="latLong" class="d-flex flex-column">
               <div>Latitude: {{ latLong.lat }}</div>
               <div>Longitude: {{ latLong.lng }}</div>
-              <div v-if="info">City: {{ info.city }}, State: {{ info.state }}, Country: {{ info.country }}</div>
+              <div v-if="info">
+                City: {{ info.city }}, State: {{ info.state }}, Country: {{ info.country }}
+              </div>
             </div>
 
             <v-btn color="primary" @click="addLog">
