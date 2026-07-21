@@ -15,6 +15,12 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  socialProviders: {
+    google: {
+      clientId: proc.env.GOOGLE_CLIENT_ID!,
+      clientSecret: proc.env.GOOGLE_CLIENT_SECRET!,
+    },
+  },
   secret: proc.env.BETTER_AUTH_SECRET,
   baseURL: proc.env.BETTER_AUTH_URL,
   // In dev, the Vite dev server (port 4000) proxies /api to this server (port 3000),
