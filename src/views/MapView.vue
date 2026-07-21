@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { mdiMap } from '@mdi/js'
+import { mdiTent } from '@mdi/js'
 
 import 'leaflet/dist/leaflet.css'
-import { LControlLayers, LLayerGroup, LMap, LMarker, LPopup, LTileLayer } from '@maxel01/vue-leaflet'
+import { LControlLayers, LIcon, LLayerGroup, LMap, LMarker, LPopup, LTileLayer } from '@maxel01/vue-leaflet'
 import { onMounted, ref } from 'vue'
-import { on } from 'events'
 import { remult } from 'remult'
 import { getUser } from '@/scripts/user'
-import { Location } from '@/shared/models/Location'
+import { Location, campTypesToColor } from '@/shared/models/Location'
 
 const zoom = ref(6)
 const center = ref<[number, number]>([47.41322, -1.219482])
@@ -30,6 +29,11 @@ onMounted(async () => {
       <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" layer-type="base" name="OpenStreetMap" />
       <LLayerGroup name="Locations" layer-type="overlay">
         <LMarker v-for="loc in locations" :key="loc.id" :lat-lng="[loc.latitude, loc.longitude]" :title="loc.name">
+          <LIcon class-name="location-marker-icon" :icon-size="[30, 30]" :icon-anchor="[15, 15]" :popup-anchor="[0, -15]">
+            <div class="location-pin" :style="{ backgroundColor: campTypesToColor(loc.type) }">
+              <svg viewBox="0 0 24 24"><path :d="mdiTent" /></svg>
+            </div>
+          </LIcon>
           <LPopup ><strong>{{ loc.name }} </strong><br />{{ loc.address }}</LPopup>
         </LMarker>
         <LControlLayers />
@@ -49,4 +53,26 @@ onMounted(async () => {
 </template>
 
 <style>
+.location-marker-icon {
+  background: transparent;
+  border: none;
+}
+
+.location-pin {
+  box-sizing: border-box;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.location-pin svg {
+  width: 18px;
+  height: 18px;
+  fill: white;
+}
 </style>

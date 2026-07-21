@@ -53,6 +53,11 @@ const router = createRouter({
       component: () => import('../views/add/AddLocationView.vue'),
     },
     {
+      path: '/add/import',
+      name: 'importLocations',
+      component: () => import('../views/add/ImportLocationsView.vue'),
+    },
+    {
       path: '/search',
       name: 'search',
       component: () => import('../views/SearchView.vue'),

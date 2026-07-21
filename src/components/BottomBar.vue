@@ -28,6 +28,10 @@ import { mdiHistory, mdiHome, mdiMagnify, mdiMap, mdiPlus } from '@mdi/js'
           title="Location"
           :to="{ name: 'addLocation' }"
         />
+        <v-list-item
+          title="Import"
+          :to="{ name: 'importLocations' }"
+        />
       </v-list>
     </v-menu>
 
