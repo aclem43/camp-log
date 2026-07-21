@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { logOut } from '@/scripts/user';
-import { mdiArchive, mdiHistory, mdiHome, mdiLogout, mdiMagnify, mdiMap, mdiMapMarker, mdiPlus } from '@mdi/js'
+import { mdiArchive, mdiFileUploadOutline, mdiHistory, mdiHome, mdiLogout, mdiMagnify, mdiMap, mdiMapMarker, mdiPlus } from '@mdi/js'
 </script>
 
 <template>
@@ -14,6 +14,7 @@ import { mdiArchive, mdiHistory, mdiHome, mdiLogout, mdiMagnify, mdiMap, mdiMapM
         </template>
         <v-list-item title="Log" :prepend-icon="mdiArchive" :to="{ name: 'addLog' }" />
         <v-list-item :prepend-icon="mdiMapMarker" title="Location" :to="{ name: 'addLocation' }" />
+        <v-list-item :prepend-icon="mdiFileUploadOutline" title="Import" :to="{ name: 'importLocations' }" />
       </v-list-group>
 
       <v-list-item :prepend-icon="mdiMap" title="Map" :to="{ name: 'map' }" />

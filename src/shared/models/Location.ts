@@ -1,9 +1,9 @@
 import { Entity, Fields, Relations } from 'remult'
 import { User } from './auth/User'
 
-export const campTypes = ['remote', '2wdAcess', '4wdAcess', 'bushCamp']
+export const campTypes = ['remote', '2wdAcess', '4wdAcess', 'bushCamp', 'unknown']
 
-export type campTypesType = 'remote' | '2wdAcess' | '4wdAcess' | 'bushCamp'
+export type campTypesType = 'remote' | '2wdAcess' | '4wdAcess' | 'bushCamp' | 'unknown'
 
 export function campTypesToText(campType: campTypesType) {
   switch (campType) {
@@ -15,6 +15,23 @@ export function campTypesToText(campType: campTypesType) {
       return '4WD Access'
     case 'bushCamp':
       return 'Bush Camp'
+    case 'unknown':
+      return 'Unknown'
+  }
+}
+
+export function campTypesToColor(campType: campTypesType) {
+  switch (campType) {
+    case 'remote':
+      return '#2e7d32'
+    case '2wdAcess':
+      return '#1976d2'
+    case '4wdAcess':
+      return '#f57c00'
+    case 'bushCamp':
+      return '#6d4c41'
+    case 'unknown':
+      return '#757575'
   }
 }
 

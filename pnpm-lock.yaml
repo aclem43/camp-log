@@ -41,6 +41,9 @@ importers:
       leaflet:
         specifier: 2.0.0-alpha
         version: 2.0.0-alpha
+      papaparse:
+        specifier: ^5.5.4
+        version: 5.5.4
       pg:
         specifier: ^8.16.3
         version: 8.16.3
@@ -75,6 +78,9 @@ importers:
       '@types/node':
         specifier: ^20.19.13
         version: 20.19.13
+      '@types/papaparse':
+        specifier: ^5.5.2
+        version: 5.5.2
       '@vitejs/plugin-vue':
         specifier: ^5.2.4
         version: 5.2.4(vite@5.4.19(@types/node@20.19.13))(vue@3.5.21(typescript@5.4.5))
@@ -871,6 +877,9 @@ packages:
 
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
+
+  '@types/papaparse@5.5.2':
+    resolution: {integrity: sha512-gFnFp/JMzLHCwRf7tQHrNnfhN4eYBVYYI897CGX4MY1tzY9l2aLkVyx2IlKZ/SAqDbB3I1AOZW5gTMGGsqWliA==}
 
   '@types/qs@6.9.15':
     resolution: {integrity: sha512-uXHQKES6DQKKCLh441Xv/dwxOq1TVS3JPUMlEqoEglvlhR6Mxnlew/Xq/LRVHpLyk7iK3zODe1qYHIMltO7XGg==}
@@ -2337,6 +2346,9 @@ packages:
   package-manager-detector@0.2.11:
     resolution: {integrity: sha512-BEnLolu+yuz22S56CU1SUKq3XC3PkwD5wv4ikR4MfGvnRVcmzXR9DwSlW2fEamyTPyXHomBJRzgapeuBvRNzJQ==}
 
+  papaparse@5.5.4:
+    resolution: {integrity: sha512-SwzWD9gl/ElwYLCI0nUja1mFJzjq2D8ziShfNBa7zCHzkOozeOGDwHWQ+tvCzEZcewecWZ5U7kUopDnG+DFYEQ==}
+
   parent-module@1.0.1:
     resolution: {integrity: sha512-GQ2EWRpQV8/o+Aw8YqtfZZPfNRWZYkbidE9k5rpl/hC3vtHHBfGm2Ifi6qWV+coDGkrUKZAxE3Lot5kcsRlh+g==}
     engines: {node: '>=6'}
@@ -3533,6 +3545,10 @@ snapshots:
       undici-types: 6.21.0
 
   '@types/normalize-package-data@2.4.4': {}
+
+  '@types/papaparse@5.5.2':
+    dependencies:
+      '@types/node': 20.19.13
 
   '@types/qs@6.9.15': {}
 
@@ -5107,6 +5123,8 @@ snapshots:
   package-manager-detector@0.2.11:
     dependencies:
       quansync: 0.2.11
+
+  papaparse@5.5.4: {}
 
   parent-module@1.0.1:
     dependencies:
