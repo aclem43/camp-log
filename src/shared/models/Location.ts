@@ -5,34 +5,28 @@ export const campTypes = ['remote', '2wdAcess', '4wdAcess', 'bushCamp', 'unknown
 
 export type campTypesType = 'remote' | '2wdAcess' | '4wdAcess' | 'bushCamp' | 'unknown'
 
+const campTypeText: Record<campTypesType, string> = {
+  'remote': 'Remote',
+  '2wdAcess': '2WD Access',
+  '4wdAcess': '4WD Access',
+  'bushCamp': 'Bush Camp',
+  'unknown': 'Unknown',
+}
+
+const campTypeColor: Record<campTypesType, string> = {
+  'remote': '#2e7d32',
+  '2wdAcess': '#1976d2',
+  '4wdAcess': '#f57c00',
+  'bushCamp': '#6d4c41',
+  'unknown': '#757575',
+}
+
 export function campTypesToText(campType: campTypesType) {
-  switch (campType) {
-    case 'remote':
-      return 'Remote'
-    case '2wdAcess':
-      return '2WD Access'
-    case '4wdAcess':
-      return '4WD Access'
-    case 'bushCamp':
-      return 'Bush Camp'
-    case 'unknown':
-      return 'Unknown'
-  }
+  return campTypeText[campType]
 }
 
 export function campTypesToColor(campType: campTypesType) {
-  switch (campType) {
-    case 'remote':
-      return '#2e7d32'
-    case '2wdAcess':
-      return '#1976d2'
-    case '4wdAcess':
-      return '#f57c00'
-    case 'bushCamp':
-      return '#6d4c41'
-    case 'unknown':
-      return '#757575'
-  }
+  return campTypeColor[campType]
 }
 
 @Entity<Location>('location', {
@@ -45,34 +39,35 @@ export function campTypesToColor(campType: campTypesType) {
 })
 export class Location {
   @Fields.autoIncrement()
-    id!: number
+  id!: number
 
   @Relations.toOne(() => User)
-    user?: User
+  user?: User
 
   @Fields.string()
-    name = ''
+  name = ''
 
   @Fields.string()
-    notes = ''
+  notes = ''
 
   @Fields.literal(() => campTypes)
-    type: campTypesType = '2wdAcess'
+  type: campTypesType = '2wdAcess'
 
   @Fields.string()
-    address = ''
+  address = ''
 
   @Fields.string()
-    city = ''
-  
+  city = ''
+
   @Fields.string()
-    state = ''
-  @Fields.string() 
-    country = ''
+  state = ''
+
+  @Fields.string()
+  country = ''
 
   @Fields.number()
-    latitude?: number
+  latitude?: number
 
   @Fields.number()
-    longitude?: number
+  longitude?: number
 }
