@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiHistory, mdiHome, mdiMagnify, mdiMap, mdiPlus } from '@mdi/js'
+import { mdiChartLine, mdiHistory, mdiHome, mdiMagnify, mdiMap, mdiPlus } from '@mdi/js'
 </script>
 
 <template>
@@ -41,7 +41,11 @@ import { mdiHistory, mdiHome, mdiMagnify, mdiMap, mdiPlus } from '@mdi/js'
     </v-btn>
     <v-btn :to="{ name: 'logs' }">
       <v-icon :icon="mdiHistory" />
-      <span>Histoy</span>
+      <span>History</span>
+    </v-btn>
+    <v-btn :to="{ name: 'stats' }">
+      <v-icon :icon="mdiChartLine" />
+      <span>Stats</span>
     </v-btn>
   </v-bottom-navigation>
 </template>

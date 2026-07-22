@@ -6,23 +6,44 @@ import { Location } from '@/shared/models/Location'
 import { Log } from '@/shared/models/Log'
 import { getUser } from '@/scripts/user'
 
+const LIST_LIMIT = 5
+
 const locations = ref<Location[]>([])
 const locationsLoading = ref(false)
+const locationsError = ref(false)
+
 const logs = ref<Log[]>([])
 const logsLoading = ref(false)
+const logsError = ref(false)
 
 const user = getUser()
 
 async function loadLocations() {
   locationsLoading.value = true
-  locations.value = await remult.repo(Location).find({where: {user: user.value!}, limit: 5 })
-  locationsLoading.value = false
+  locationsError.value = false
+  try {
+    locations.value = await remult.repo(Location).find({ where: { user: user.value! }, limit: LIST_LIMIT })
+  }
+  catch {
+    locationsError.value = true
+  }
+  finally {
+    locationsLoading.value = false
+  }
 }
 
 async function loadLogs() {
   logsLoading.value = true
-  logs.value = await remult.repo(Log).find({ where: { user: user.value! }, limit: 5, orderBy: { dateStart: 'desc' }, include: { location: true } })
-  logsLoading.value = false
+  logsError.value = false
+  try {
+    logs.value = await remult.repo(Log).find({ where: { user: user.value! }, limit: LIST_LIMIT, orderBy: { dateStart: 'desc' } })
+  }
+  catch {
+    logsError.value = true
+  }
+  finally {
+    logsLoading.value = false
+  }
 }
 
 onMounted(async () => {
@@ -44,6 +65,7 @@ onMounted(async () => {
             <div>
               <v-btn
                 color="primary"
+                aria-label="Settings"
                 :to="{ name: 'settings' }"
               >
                 <v-icon :icon="mdiCog" />
@@ -65,22 +87,26 @@ onMounted(async () => {
         </v-card>
         <v-card>
           <v-card-title>
-            Popular Campsites
+            Your Campsites
           </v-card-title>
           <v-card-text>
-            <v-list :loading="locationsLoading">
-              <template v-if="locationsLoading">
-                <v-skeleton-loader v-for="x in 4" :key="x" type="list-item" />
-              </template>
-              <template v-else>
-                <v-list-item
-                  v-for="loc in locations"
-                  :key="loc.id"
-                  :title="loc.name"
-                  :subtitle="loc.address"
-                />
-              </template>
+            <template v-if="locationsLoading">
+              <v-skeleton-loader v-for="x in 4" :key="x" type="list-item" />
+            </template>
+            <v-alert v-else-if="locationsError" type="error" variant="tonal" density="compact">
+              Couldn't load your campsites. Please try again later.
+            </v-alert>
+            <v-list v-else-if="locations.length">
+              <v-list-item
+                v-for="loc in locations"
+                :key="loc.id"
+                :title="loc.name || 'Unnamed campsite'"
+                :subtitle="loc.address || 'No address set'"
+              />
             </v-list>
+            <p v-else class="text-medium-emphasis">
+              You haven't added any campsites yet.
+            </p>
           </v-card-text>
           <v-card-actions>
             <v-btn
@@ -95,19 +121,25 @@ onMounted(async () => {
           <v-card-title>
             Recent Logs
           </v-card-title>
-          <v-list :loading="logsLoading">
+          <v-card-text>
             <template v-if="logsLoading">
               <v-skeleton-loader v-for="x in 4" :key="x" type="list-item" />
             </template>
-            <template v-else>
+            <v-alert v-else-if="logsError" type="error" variant="tonal" density="compact">
+              Couldn't load your logs. Please try again later.
+            </v-alert>
+            <v-list v-else-if="logs.length">
               <v-list-item
                 v-for="log in logs"
                 :key="log.id"
-                :title="log.name"
-                :subtitle=" log.dateStart.toLocaleDateString()"
+                :title="log.name || 'Untitled log'"
+                :subtitle="log.dateStart.toLocaleDateString()"
               />
-            </template>
-          </v-list>
+            </v-list>
+            <p v-else class="text-medium-emphasis">
+              You haven't logged any trips yet.
+            </p>
+          </v-card-text>
           <v-card-actions>
             <v-btn
               color="primary"
