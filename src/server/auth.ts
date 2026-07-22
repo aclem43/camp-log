@@ -6,6 +6,7 @@ import { User } from '../shared/models/auth/User'
 import { Verification } from '../shared/models/auth/Verification'
 import { dataProvider } from './db/dataProvider'
 import { isDev, proc } from './config'
+import { createDefaultActivityTemplates } from './defaults'
 
 export const auth = betterAuth({
   database: remultAdapter({
@@ -14,6 +15,15 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          await createDefaultActivityTemplates(user.id)
+        },
+      },
+    },
   },
   socialProviders: {
     google: {
