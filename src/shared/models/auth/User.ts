@@ -1,9 +1,10 @@
-import { Entity, Fields } from 'remult'
+import { Allow, Entity, Fields, remult } from 'remult'
 
-@Entity('user', {
+@Entity<User>('user', {
   dbName: 'camp.user',
   allowApiCrud: false,
-  allowApiRead: true,
+  allowApiRead: Allow.authenticated,
+  apiPrefilter: () => ({ id: remult.user!.id }),
 })
 export class User {
   @Fields.string()
