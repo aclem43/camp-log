@@ -13,7 +13,7 @@ const date = defineModel({
 </script>
 
 <template>
-  <VueDatePicker v-model="date">
+  <VueDatePicker v-model="date" teleport="body" :clearable="false">
     <template #dp-input="{ value }">
       <v-text-field
         :prepend-inner-icon="mdiCalendar"
@@ -22,6 +22,7 @@ const date = defineModel({
         variant="solo-filled"
         density="compact"
         hide-details
+        readonly
       />
     </template>
   </VueDatePicker>
