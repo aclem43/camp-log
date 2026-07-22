@@ -1,4 +1,4 @@
-import { Entity, Fields, Relations } from 'remult'
+import { Allow, Entity, Fields, Relations, remult } from 'remult'
 import { User } from './auth/User'
 
 export const campTypes = ['remote', '2wdAcess', '4wdAcess', 'bushCamp', 'unknown']
@@ -35,9 +35,13 @@ export function campTypesToColor(campType: campTypesType) {
   }
 }
 
-@Entity('location', {
+@Entity<Location>('location', {
   dbName: 'camp.location',
-  allowApiCrud: true,
+  allowApiCrud: Allow.authenticated,
+  apiPrefilter: () => ({ user: { $id: remult.user!.id } }),
+  saving: (location) => {
+    location.user = { id: remult.user!.id } as User
+  },
 })
 export class Location {
   @Fields.autoIncrement()
