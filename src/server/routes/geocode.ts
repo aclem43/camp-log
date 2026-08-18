@@ -17,14 +17,17 @@ interface GeocodeResult {
 const cache = new Map<string, GeocodeResult>()
 
 router.post('/geocode', async (req, res) => {
-  const { address } = req.body
+  const { address, latitude, longitude } = req.body
 
-  if (typeof address !== 'string' || !address.trim()) {
+  const isReverse = typeof latitude === 'number' && typeof longitude === 'number'
+
+  if (!isReverse && (typeof address !== 'string' || !address.trim())) {
     res.status(400).json({ message: 'Address is required' })
     return
   }
 
-  const cacheKey = address.trim().toLowerCase()
+  const query = isReverse ? `${latitude}+${longitude}` : address.trim()
+  const cacheKey = isReverse ? `rev:${latitude.toFixed(5)},${longitude.toFixed(5)}` : `fwd:${query.toLowerCase()}`
   const cached = cache.get(cacheKey)
   if (cached) {
     res.json(cached)
@@ -34,7 +37,7 @@ router.post('/geocode', async (req, res) => {
   const apiKey = proc.env.OPENCAGE_API_KEY
 
   try {
-    const resp = await fetch(`https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(address)}&key=${apiKey}`)
+    const resp = await fetch(`https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${apiKey}`)
 
     if (!resp.ok) {
       console.error(`OpenCage request failed: ${resp.status} ${resp.statusText}`)
@@ -49,21 +52,21 @@ router.post('/geocode', async (req, res) => {
       const components = result.results[0].components
 
       const geocodeResult: GeocodeResult = {
-        address,
+        address: isReverse ? (result.results[0].formatted ?? query) : address,
         info: {
           city: components.city ?? components.town ?? components.village ?? components.county,
           state: components.state,
           country: components.country,
         },
-        latitude: lat,
-        longitude: lng,
+        latitude: isReverse ? latitude : lat,
+        longitude: isReverse ? longitude : lng,
       }
 
       cache.set(cacheKey, geocodeResult)
       res.json(geocodeResult)
     }
     else {
-      res.status(404).json({ message: 'Address not found' })
+      res.status(404).json({ message: isReverse ? 'Location not found' : 'Address not found' })
     }
   }
   catch (err) {
