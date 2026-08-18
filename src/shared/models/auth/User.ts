@@ -1,5 +1,8 @@
 import { Allow, Entity, Fields, remult } from 'remult'
 
+export const unitPreferences = ['metric', 'imperial'] as const
+export type UnitPreference = typeof unitPreferences[number]
+
 @Entity<User>('user', {
   dbName: 'camp.user',
   allowApiCrud: false,
@@ -21,6 +24,12 @@ export class User {
 
   @Fields.string()
   image?: string
+
+  @Fields.boolean()
+  active = true
+
+  @Fields.literal(() => unitPreferences)
+  unitPreference: UnitPreference = 'metric'
 
   @Fields.createdAt()
   createdAt!: Date
