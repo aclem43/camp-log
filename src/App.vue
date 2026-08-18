@@ -3,6 +3,7 @@ import { RouterView } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { onMounted } from 'vue'
 import BottomBar from './components/BottomBar.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 import { setupAlert } from './scripts/alert'
 import { darkTheme } from './scripts/theme'
 import NavBar from './components/NavBar.vue'
@@ -21,6 +22,7 @@ const loggedIn = getLoggedIn()
     </v-main>
     <BottomBar v-if="mobile && loggedIn" />
     <NavBar v-else-if="loggedIn" />
+    <ConfirmDialog />
     <v-snackbar v-model="alert.show" :timeout="alert.duration" variant="flat">
       {{ alert.message }}
       <template #actions>

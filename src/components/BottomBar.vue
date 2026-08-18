@@ -3,7 +3,13 @@ import { mdiChartLine, mdiHistory, mdiHome, mdiMagnify, mdiMap, mdiPlus } from '
 </script>
 
 <template>
-  <v-bottom-navigation grow>
+  <v-bottom-navigation
+    grow
+    :style="{
+      height: 'calc(56px + env(safe-area-inset-bottom, 0px))',
+      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+    }"
+  >
     <v-btn :to="{ name: 'home' }">
       <v-icon :icon="mdiHome" />
       <span>Home</span>
