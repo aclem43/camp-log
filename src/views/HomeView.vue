@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mdiAccount, mdiChartLine, mdiCog } from '@mdi/js'
+import { mdiAccount, mdiChartLine, mdiCog, mdiPlus } from '@mdi/js'
 import { remult } from 'remult'
 import { onMounted, ref } from 'vue'
 import { Location } from '@/shared/models/Location'
@@ -152,4 +152,12 @@ onMounted(async () => {
       </v-col>
     </v-row>
   </v-container>
+  <v-fab
+    app
+    color="primary"
+    location="bottom end"
+    :icon="mdiPlus"
+    aria-label="Add Log"
+    :to="{ name: 'addLog' }"
+  />
 </template>
