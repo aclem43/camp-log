@@ -1,25 +1,17 @@
 import { remultExpress } from 'remult/remult-express'
-import { PostgresDataProvider } from 'remult/postgres'
-import { JsonDataProvider, SqlDatabase, type UserInfo, repo } from 'remult'
-import type { Request } from 'express'
-import { JsonEntityFileStorage } from 'remult/server'
-import { isDev, proc } from '../config'
-import { pool } from '../db/pool'
+import type { UserInfo } from 'remult'
+import { fromNodeHeaders } from 'better-auth/node'
+import { isDev } from '../config'
+import { dataProvider } from '../db/dataProvider'
+import { auth } from '../auth'
 import { Activity } from '../../shared/models/Activity'
 import { Location } from '../../shared/models/Location'
 import { ActivityTemplate } from '../../shared/models/ActivityTemplate'
 import { Log } from '../../shared/models/Log'
-import { User, UserPassword } from '../../shared/models/User'
-
-let dataProvider
-if (proc.env.DATABASE_TYPE === 'JSON') {
-  dataProvider = new JsonDataProvider(new JsonEntityFileStorage('./db'))
-}
-else {
-  dataProvider = new SqlDatabase(new PostgresDataProvider(pool, {
-    orderByNullsFirst: false,
-  }))
-}
+import { Account } from '../../shared/models/auth/Account'
+import { Session } from '../../shared/models/auth/Session'
+import { User } from '../../shared/models/auth/User'
+import { Verification } from '../../shared/models/auth/Verification'
 
 export const api = remultExpress(
   {
@@ -30,14 +22,15 @@ export const api = remultExpress(
       Location,
       Log,
       User,
-      UserPassword,
+      Session,
+      Account,
+      Verification,
     ],
     getUser: async (req) => {
-      // console.log(req)
-      if (req.session !== undefined && req.session.user) {
-        return req.session!.user as UserInfo
-      }
-      return undefined
+      const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) })
+      if (!session)
+        return undefined
+      return { id: session.user.id, name: session.user.name } as UserInfo
     },
     dataProvider,
   },

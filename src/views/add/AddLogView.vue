@@ -2,6 +2,7 @@
 import { mdiCloud, mdiMapMarker } from '@mdi/js'
 import { remult } from 'remult'
 import { onMounted, ref } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 import { useDisplay } from 'vuetify'
 import { Location } from '@/shared/models/Location'
 import DatePicker from '@/components/date-picker/DatePicker.vue'
@@ -16,7 +17,7 @@ const log = ref<Omit<Log, 'id' >>({
   description: '',
   weather: '',
   dateStart: new Date(),
-  dateEnd: null,
+  dateEnd: undefined,
 
 })
 
@@ -30,9 +31,20 @@ const currentlySelectedActivity = ref<ActivityTemplate | null>(null)
 
 const activities = ref<ActivityTemplate[]>([])
 
+const locationRepo = remult.repo(Location)
+
+async function searchLocations(query: string) {
+  locations.value = await locationRepo.find({
+    where: { user: user.value!, ...(query ? { name: { $contains: query } } : {}) },
+    limit: 10,
+  })
+}
+
+const debouncedSearchLocations = useDebounceFn(searchLocations, 300)
+
 onMounted(async () => {
-  locations.value = await remult.repo(Location).find({ where: { user: user.value! }, limit: 5 })
-  activities.value = await remult.repo(ActivityTemplate).find({ where: { user: user.value! }, orderBy: { name: 'asc' }})
+  await searchLocations('')
+  activities.value = await remult.repo(ActivityTemplate).find({ where: { user: user.value! }, orderBy: { name: 'asc' } })
 })
 
 const checkIncludesActivity = (activity: ActivityTemplate) => selectedActivities.value.some(a => a.template.id === activity.id)
@@ -101,6 +113,8 @@ async function addLog() {
               :prepend-inner-icon="mdiMapMarker"
               item-title="name"
               item-value="id"
+              no-filter
+              @update:search="debouncedSearchLocations"
             />
             <v-text-field
               v-model="log.weather"

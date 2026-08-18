@@ -1,10 +1,14 @@
-import { Entity, Fields, Relations } from 'remult'
+import { Allow, Entity, Fields, Relations, remult } from 'remult'
 import { Location } from './Location'
-import { User } from './User'
+import { User } from './auth/User'
 
-@Entity('log', {
+@Entity<Log>('log', {
     dbName: 'camp.log',
-    allowApiCrud: true,
+    allowApiCrud: Allow.authenticated,
+    apiPrefilter: () => ({ user: { $id: remult.user!.id } }),
+    saving: (log) => {
+      log.user = { id: remult.user!.id } as User
+    },
 })
 export class Log {
     @Fields.autoIncrement()
@@ -26,7 +30,7 @@ export class Log {
     dateStart = new Date()
 
     @Fields.date()
-    dateEnd?: Date | null
+    dateEnd?: Date
 
     @Relations.toOne(() => Location)
     location?: Location

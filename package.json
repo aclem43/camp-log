@@ -1,7 +1,7 @@
 {
   "name": "camp-log",
   "type": "module",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -15,16 +15,18 @@
   "dependencies": {
     "@maxel01/vue-leaflet": "1.0.0-beta.1",
     "@mdi/font": "^7.4.47",
+    "@nerdfolio/remult-better-auth": "^0.4.3",
     "@vuepic/vue-datepicker": "^8.8.1",
     "@vueuse/core": "^10.11.1",
+    "better-auth": "^1.6.23",
     "compression": "^1.8.1",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
-    "express-session": "^1.18.2",
     "helmet": "^7.2.0",
     "leaflet": "2.0.0-alpha",
+    "papaparse": "^5.5.4",
     "pg": "^8.16.3",
-    "remult": "^0.26.23",
+    "remult": "^3.3.16",
     "vue": "^3.5.21",
     "vue-router": "^4.5.1"
   },
@@ -35,8 +37,8 @@
     "@tsconfig/node20": "^20.1.6",
     "@types/compression": "^1.8.1",
     "@types/express": "^4.17.23",
-    "@types/express-session": "^1.18.2",
     "@types/node": "^20.19.13",
+    "@types/papaparse": "^5.5.2",
     "@vitejs/plugin-vue": "^5.2.4",
     "@vue/eslint-config-typescript": "^13.0.0",
     "@vue/tsconfig": "^0.5.1",
@@ -49,5 +51,6 @@
     "vite-plugin-vuetify": "^2.1.2",
     "vue-tsc": "^2.2.12",
     "vuetify": "^3.9.7"
-  }
+  },
+  "packageManager": "pnpm@10.28.2+sha512.41872f037ad22f7348e3b1debbaf7e867cfd448f2726d9cf74c08f19507c31d2c8e7a11525b983febc2df640b5438dee6023ebb1f84ed43cc2d654d2bc326264"
 }
