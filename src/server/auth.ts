@@ -1,4 +1,4 @@
-import { betterAuth } from 'better-auth'
+import { APIError, betterAuth } from 'better-auth'
 import { remultAdapter } from '@nerdfolio/remult-better-auth'
 import { Account } from '../shared/models/auth/Account'
 import { Session } from '../shared/models/auth/Session'
@@ -16,11 +16,45 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  user: {
+    additionalFields: {
+      active: {
+        type: 'boolean',
+        required: false,
+        input: false,
+        defaultValue: true,
+      },
+      unitPreference: {
+        type: 'string',
+        required: false,
+        input: false,
+        defaultValue: 'metric',
+      },
+    },
+  },
   databaseHooks: {
     user: {
       create: {
         after: async (user) => {
           await createDefaultActivityTemplates(user.id)
+        },
+      },
+    },
+    session: {
+      create: {
+        // Blocks new sign-ins for deactivated accounts. Existing sessions are
+        // revoked separately (see /api/deactivate-account) since this hook
+        // only runs when a session is created, not on every request.
+        before: async (session, ctx) => {
+          if (!ctx)
+            return
+          const user = await ctx.context.internalAdapter.findUserById(session.userId) as { active?: boolean } | null
+          if (user?.active === false) {
+            throw new APIError('FORBIDDEN', {
+              message: 'This account has been deactivated.',
+              code: 'ACCOUNT_DEACTIVATED',
+            })
+          }
         },
       },
     },

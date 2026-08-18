@@ -1,7 +1,8 @@
-import { readonly, ref } from 'vue'
 import { remult } from 'remult'
+import { readonly, ref } from 'vue'
 import { createAuthClient } from 'better-auth/vue'
 import { showAlert } from './alert'
+import type { UnitPreference } from '@/shared/models/auth/User'
 import router from '@/router'
 import { User } from '@/shared/models/auth/User'
 
@@ -84,10 +85,39 @@ export async function logInWithGoogle() {
     showAlert(error.message ?? 'Google sign-in failed')
 }
 
-export async function logOut() {
+export async function logOut(message = 'Logged out') {
   await authClient.signOut()
   loggedIn.value = false
   user.value = null
   router.push({ name: 'login' })
-  showAlert('Logged out')
+  showAlert(message)
+}
+
+export async function updateProfile(data: { name: string, unitPreference: UnitPreference }) {
+  const response = await fetch('/api/profile', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    showAlert(body?.message ?? 'Failed to update profile')
+    return false
+  }
+  if (user.value) {
+    user.value.name = data.name
+    user.value.unitPreference = data.unitPreference
+  }
+  showAlert('Profile updated')
+  return true
+}
+
+export async function deactivateAccount() {
+  const response = await fetch('/api/deactivate-account', { method: 'POST' })
+  if (!response.ok) {
+    showAlert('Failed to deactivate account')
+    return false
+  }
+  await logOut('Account deactivated')
+  return true
 }

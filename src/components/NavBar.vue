@@ -23,7 +23,7 @@ import { logOut } from '@/scripts/user'
     </v-list>
     <template #append>
       <v-list density="compact" nav>
-        <v-list-item :prepend-icon="mdiLogout" title="Logout" @click="logOut" />
+        <v-list-item :prepend-icon="mdiLogout" title="Logout" @click="() => logOut()" />
       </v-list>
     </template>
   </v-navigation-drawer>

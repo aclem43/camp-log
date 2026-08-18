@@ -9,6 +9,7 @@ import { api } from './plugins/remult'
 import { auth } from './auth'
 import { isDev, isProd, proc } from './config'
 import GeocodeRoutes from './routes/geocode'
+import AccountRoutes from './routes/account'
 
 const app = express()
 const port = Number.parseInt(proc.env.PORT as string ?? 3000)
@@ -21,6 +22,7 @@ app.all('/api/auth/*', toNodeHandler(auth))
 app.use(api)
 app.use(api.withRemult)
 app.use('/api/', GeocodeRoutes)
+app.use('/api/', AccountRoutes)
 
 const frontendFiles = `${process.cwd()}/dist`
 
