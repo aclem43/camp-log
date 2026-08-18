@@ -4,6 +4,7 @@ import { onMounted, ref } from 'vue'
 import { mdiDelete, mdiEye } from '@mdi/js'
 import { Log } from '@/shared/models/Log'
 import { getUser } from '@/scripts/user'
+import { askConfirm } from '@/scripts/confirm'
 
 const logs = ref<Log[]>([])
 
@@ -16,9 +17,8 @@ async function load() {
 }
 
 async function deleteLog(log: Log) {
-  // eslint-disable-next-line no-alert
-  const confirm = window.confirm('Are you sure you want to delete this log?')
-  if (!confirm)
+  const confirmed = await askConfirm('Are you sure you want to delete this log?', { confirmText: 'Delete' })
+  if (!confirmed)
     return
   await logRepo.delete(log)
   await load()

@@ -4,6 +4,7 @@ import { remult } from 'remult'
 import { mdiDelete, mdiEye } from '@mdi/js'
 import { Location } from '@/shared/models/Location'
 import { getUser } from '@/scripts/user'
+import { askConfirm } from '@/scripts/confirm'
 
 const locations = ref<Location[]>([])
 const user = getUser()
@@ -16,9 +17,8 @@ onMounted(async () => {
 })
 
 async function deleteLocation(location: Location) {
-  // eslint-disable-next-line no-alert
-  const confirm = window.confirm('Are you sure you want to delete this location?')
-  if (!confirm)
+  const confirmed = await askConfirm('Are you sure you want to delete this location?', { confirmText: 'Delete' })
+  if (!confirmed)
     return
   await remult.repo(Location).delete(location)
   await loadLocations()

@@ -243,7 +243,7 @@ async function addLog() {
             <div class="d-flex align-center ga-4">
               <v-text-field
                 v-model="location.address" hide-details label="Address" required variant="solo-filled"
-                :prepend-inner-icon="mdiMapMarker" @keyup.enter="findAddress"
+                autocomplete="street-address" :prepend-inner-icon="mdiMapMarker" @keyup.enter="findAddress"
               />
               <v-btn size="large" color="primary" :loading="findingAddress" :disabled="findDisabled" @click="findAddress">
                 Find
