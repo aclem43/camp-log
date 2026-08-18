@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
-import { checkLogin, getLoggedIn } from '@/scripts/user'
+import { checkLogin, getLoggedIn, whenReady } from '@/scripts/user'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -8,7 +7,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView,
+      component: () => import('../views/HomeView.vue'),
     },
     {
       path: '/login',
@@ -32,6 +31,12 @@ const router = createRouter({
       component: () => import('../views/LocationsView.vue'),
     },
     {
+      path: '/location/:id',
+      name: 'location',
+      props: (route) => { return { id: Number(route.params.id) } },
+      component: () => import('../views/LocationView.vue'),
+    },
+    {
       path: '/logs',
       name: 'logs',
       component: () => import('../views/LogsView.vue'),
@@ -51,6 +56,11 @@ const router = createRouter({
       path: '/add/location',
       name: 'addLocation',
       component: () => import('../views/add/AddLocationView.vue'),
+    },
+    {
+      path: '/add/import',
+      name: 'importLocations',
+      component: () => import('../views/add/ImportLocationsView.vue'),
     },
     {
       path: '/search',
@@ -75,7 +85,8 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
+  await whenReady()
   if (to.meta.authNotRequired) {
     next()
   }

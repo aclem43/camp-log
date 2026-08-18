@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { checkLogin, logIn } from '@/scripts/user'
+import { mdiGoogle } from '@mdi/js'
+import { checkLogin, logIn, logInWithGoogle } from '@/scripts/user'
 import router from '@/router'
 
 const email = ref('')
@@ -46,6 +47,15 @@ onMounted(() => {
               </router-link>
             </div>
           </div>
+          <v-divider class="my-4" />
+          <v-btn
+            block
+            variant="outlined"
+            :prepend-icon="mdiGoogle"
+            @click="logInWithGoogle"
+          >
+            Sign in with Google
+          </v-btn>
         </v-form>
       </v-card-text>
     </v-card>

@@ -1,9 +1,13 @@
-import { Entity, Fields, Relations } from 'remult'
-import { User } from './User'
+import { Allow, Entity, Fields, Relations, remult } from 'remult'
+import { User } from './auth/User'
 
-@Entity('activityTemplate', {
+@Entity<ActivityTemplate>('activityTemplate', {
     dbName: 'camp.activityTemplate',
-    allowApiCrud: true,
+    allowApiCrud: Allow.authenticated,
+    apiPrefilter: () => ({ user: { $id: remult.user!.id } }),
+    saving: (activityTemplate) => {
+      activityTemplate.user = { id: remult.user!.id } as User
+    },
 })
 export class ActivityTemplate {
     @Fields.autoIncrement()
