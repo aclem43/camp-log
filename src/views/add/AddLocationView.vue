@@ -226,7 +226,11 @@ async function addLog() {
 }
 
 async function queueLocationOffline() {
-  await queueMutation('location', toRaw(location.value))
+  // `user` is a remult entity relation object — the server derives it from
+  // the session on insert anyway, and it isn't structured-clone-safe for
+  // IndexedDB (unlike the online path, which just JSON-serializes it).
+  const { user: _user, ...payload } = toRaw(location.value)
+  await queueMutation('location', payload)
   showAlert('Saved offline — will sync when you\'re back online.')
   router.push({ name: 'locations' })
 }
