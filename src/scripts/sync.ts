@@ -1,6 +1,7 @@
 import { remult } from 'remult'
 import { Location } from '@/shared/models/Location'
 import { Log } from '@/shared/models/Log'
+import { offline } from '@/scripts/connectivity'
 import { checkLogin } from '@/scripts/user'
 import { showAlert } from './alert'
 import { isNetworkError, markFailed, pendingItems, removePending } from './outbox'
@@ -8,7 +9,7 @@ import { isNetworkError, markFailed, pendingItems, removePending } from './outbo
 let syncing = false
 
 export async function syncOutbox() {
-  if (syncing || !navigator.onLine || !checkLogin())
+  if (syncing || offline.value || !checkLogin())
     return
 
   syncing = true
