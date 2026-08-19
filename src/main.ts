@@ -8,7 +8,7 @@ import vuetify from './plugins/vuetify'
 import { initialize } from './scripts/user'
 
 const app = createApp(App)
-remult.apiClient.url = '/api/'
+remult.apiClient.url = '/api'
 app.use(router)
 app.use(vuetify)
 
