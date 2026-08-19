@@ -1,10 +1,13 @@
 import { createApp } from 'vue'
 
 import { remult } from 'remult'
+import { registerSW } from 'virtual:pwa-register'
 import App from './App.vue'
 
 import router from './router'
 import vuetify from './plugins/vuetify'
+import { showAlert } from './scripts/alert'
+import { askConfirm } from './scripts/confirm'
 import { initialize } from './scripts/user'
 
 const app = createApp(App)
@@ -15,3 +18,20 @@ app.use(vuetify)
 initialize()
 
 app.mount('#app')
+
+const updateSW = registerSW({
+  onNeedRefresh() {
+    askConfirm('A new version of Camp Log is available.', {
+      title: 'Update Available',
+      confirmText: 'Reload',
+      cancelText: 'Later',
+      color: 'primary',
+    }).then((confirmed) => {
+      if (confirmed)
+        updateSW(true)
+    })
+  },
+  onOfflineReady() {
+    showAlert('Camp Log is ready to work offline')
+  },
+})
