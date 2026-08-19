@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { mdiCloud, mdiMapMarker } from '@mdi/js'
 import { remult } from 'remult'
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, toRaw, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { useDisplay } from 'vuetify'
 import router from '@/router'
@@ -10,6 +10,7 @@ import DatePicker from '@/components/date-picker/DatePicker.vue'
 import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
 import { Log } from '@/shared/models/Log'
 import { showAlert } from '@/scripts/alert'
+import { isNetworkError, queueMutation } from '@/scripts/outbox'
 import { Activity } from '@/shared/models/Activity'
 import { getUser } from '@/scripts/user'
 
@@ -78,6 +79,11 @@ async function addLog() {
 
   saving.value = true
   try {
+    if (!navigator.onLine) {
+      await queueLogOffline()
+      return
+    }
+
     const l = await logRepo.insert(log.value)
 
     const results = await Promise.allSettled(
@@ -96,12 +102,26 @@ async function addLog() {
 
     router.push({ name: 'logs' })
   }
-  catch {
+  catch (err) {
+    if (isNetworkError(err)) {
+      await queueLogOffline()
+      return
+    }
     showAlert('Failed to add log. Please try again.')
   }
   finally {
     saving.value = false
   }
+}
+
+async function queueLogOffline() {
+  await queueMutation('log', toRaw(log.value))
+  showAlert(
+    selectedActivities.value.length
+      ? 'Saved offline — will sync when you\'re back online. Activities couldn\'t be attached and will need to be added afterwards.'
+      : 'Saved offline — will sync when you\'re back online.',
+  )
+  router.push({ name: 'logs' })
 }
 </script>
 
