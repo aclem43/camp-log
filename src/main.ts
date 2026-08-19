@@ -8,6 +8,7 @@ import router from './router'
 import vuetify from './plugins/vuetify'
 import { showAlert } from './scripts/alert'
 import { askConfirm } from './scripts/confirm'
+import { initSync } from './scripts/sync'
 import { initialize } from './scripts/user'
 
 const app = createApp(App)
@@ -15,7 +16,7 @@ remult.apiClient.url = '/api/'
 app.use(router)
 app.use(vuetify)
 
-initialize()
+initialize().then(initSync)
 
 app.mount('#app')
 
