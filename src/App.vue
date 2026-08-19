@@ -4,6 +4,7 @@ import { useDisplay } from 'vuetify'
 import { onMounted } from 'vue'
 import BottomBar from './components/BottomBar.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
+import OnlineStatusBanner from './components/OnlineStatusBanner.vue'
 import { setupAlert } from './scripts/alert'
 import { darkTheme } from './scripts/theme'
 import NavBar from './components/NavBar.vue'
@@ -18,6 +19,7 @@ const loggedIn = getLoggedIn()
 <template>
   <v-app :theme="darkTheme ? 'dark' : ''">
     <v-main>
+      <OnlineStatusBanner />
       <RouterView />
     </v-main>
     <BottomBar v-if="mobile && loggedIn" />
