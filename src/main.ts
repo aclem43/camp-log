@@ -12,7 +12,7 @@ import { initSync } from './scripts/sync'
 import { initialize } from './scripts/user'
 
 const app = createApp(App)
-remult.apiClient.url = '/api/'
+remult.apiClient.url = '/api'
 app.use(router)
 app.use(vuetify)
 
