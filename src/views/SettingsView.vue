@@ -4,6 +4,7 @@ import { onMounted, ref, watch } from 'vue'
 import type { UnitPreference } from '@/shared/models/auth/User'
 import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
 import { showAlert } from '@/scripts/alert'
+import { askConfirm } from '@/scripts/confirm'
 import { darkTheme } from '@/scripts/theme'
 import { deactivateAccount, getUser, logOut, updateProfile } from '@/scripts/user'
 
@@ -37,9 +38,8 @@ onMounted(async () => {
 })
 
 async function removeActivity(activity: ActivityTemplate) {
-  // eslint-disable-next-line no-alert
-  const confirm = window.confirm('Are you sure you want to remove this activity?')
-  if (!confirm)
+  const confirmed = await askConfirm('Are you sure you want to remove this activity?', { confirmText: 'Remove' })
+  if (!confirmed)
     return
   await activityRepo.delete(activity.id)
   showAlert('Activity removed successfully')
@@ -85,9 +85,11 @@ async function saveProfile() {
 }
 
 async function handleDeactivate() {
-  // eslint-disable-next-line no-alert
-  const confirm = window.confirm('Are you sure you want to deactivate your account? You will be logged out and will not be able to sign back in.')
-  if (!confirm)
+  const confirmed = await askConfirm(
+    'Are you sure you want to deactivate your account? You will be logged out and will not be able to sign back in.',
+    { confirmText: 'Deactivate' },
+  )
+  if (!confirmed)
     return
   await deactivateAccount()
 }
@@ -155,7 +157,7 @@ async function importData() {
                 <v-expansion-panel-title> Account </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <div class="d-flex flex-column ga-4">
-                    <v-text-field v-model="profile.name" label="Display Name" variant="solo-filled" hide-details />
+                    <v-text-field v-model="profile.name" label="Display Name" autocomplete="name" variant="solo-filled" hide-details />
                     <v-select
                       v-model="profile.unitPreference"
                       :items="unitOptions"

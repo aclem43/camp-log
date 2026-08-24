@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { mdiAccount, mdiChartLine, mdiCog } from '@mdi/js'
+import { mdiAccount, mdiChartLine, mdiCog, mdiPlus } from '@mdi/js'
 import { remult } from 'remult'
 import { onMounted, ref } from 'vue'
+import { useDisplay } from 'vuetify'
 import { Location } from '@/shared/models/Location'
 import { Log } from '@/shared/models/Log'
 import { getUser } from '@/scripts/user'
+
+const { mobile } = useDisplay()
 
 const LIST_LIMIT = 5
 
@@ -152,4 +155,13 @@ onMounted(async () => {
       </v-col>
     </v-row>
   </v-container>
+  <v-fab
+    app
+    color="primary"
+    location="bottom end"
+    :style="mobile ? { bottom: 'calc(56px + env(safe-area-inset-bottom, 0px) + 16px)' } : undefined"
+    :icon="mdiPlus"
+    aria-label="Add Log"
+    :to="{ name: 'addLog' }"
+  />
 </template>

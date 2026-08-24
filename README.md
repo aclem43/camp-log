@@ -14,3 +14,13 @@ This app was initially developed for a Venturer Scout SIA, but will likely be ex
 # Latest demo deployment
 The site is hosted for free on render, if its the first request to it in the first 15 minutes it might take up to a minute to start
 [Site on free render plan](http://camp-log.onrender.com/)
+
+# Running with Docker
+A `Dockerfile` builds the frontend and runs the Express/Remult server. On every push to `master`, GitHub Actions builds the image and publishes it to `ghcr.io/aclem43/camp-log:latest` (see [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml)).
+
+To run it (e.g. on a TrueNAS box):
+
+1. Copy [.env.example](.env.example) to `.env` and fill in real values (`BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID`/`SECRET`, `OPENCAGE_API_KEY`, and Postgres credentials). Keep `DATABASE_URL` in sync with `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB`.
+2. Run `docker compose up -d` using [docker-compose.yml](docker-compose.yml). This starts the app on port 3000, a Postgres 16 instance with a persistent volume, and a [Watchtower](https://containrrr.dev/watchtower/) sidecar that polls GHCR every 5 minutes and auto-updates the app container when a new `latest` image is published (Postgres itself is pinned to the `16` tag and won't be auto-updated).
+
+If the GHCR package is private, authenticate Docker on the host first: `docker login ghcr.io -u <github-username>` with a personal access token that has `read:packages` scope.

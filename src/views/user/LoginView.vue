@@ -25,6 +25,9 @@ onMounted(() => {
           <v-text-field
             v-model="email"
             label="Email"
+            type="email"
+            inputmode="email"
+            autocomplete="email"
             required
           />
           <v-text-field
@@ -32,6 +35,7 @@ onMounted(() => {
             label="Password"
             required
             type="password"
+            autocomplete="current-password"
           />
           <div class="d-flex justify-space-between">
             <v-btn
