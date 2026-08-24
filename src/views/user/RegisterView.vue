@@ -20,11 +20,15 @@ const confirmPassword = ref('')
           <v-text-field
             v-model="name"
             label="Name"
+            autocomplete="name"
             required
           />
           <v-text-field
             v-model="email"
             label="Email"
+            type="email"
+            inputmode="email"
+            autocomplete="email"
             required
           />
           <v-text-field
@@ -32,12 +36,14 @@ const confirmPassword = ref('')
             label="Password"
             required
             type="password"
+            autocomplete="new-password"
           />
           <v-text-field
             v-model="confirmPassword"
             label="Confirm Password"
             required
             type="password"
+            autocomplete="new-password"
           />
           <div class="d-flex justify-space-between">
             <v-btn

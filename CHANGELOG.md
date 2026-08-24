@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.0 (2026-08-25)
+
+### Features
+
+* Camp Log can now be installed as an app on your phone or computer, and previously viewed logs, locations, and map tiles keep working even without a signal.
+* You can now add logs and locations while offline — they'll sync automatically once you're back online, with options to retry or discard anything that fails.
+* Added a shortcut button on the Home page to jump straight to adding a log.
+* Improved the mobile experience with nicer confirmation dialogs, better fit on notched phones, and smarter keyboard/autofill support on forms.
+
+### Bug Fixes
+
+* Fixed a bug that could cause requests to fail after logging in or registering in production.
+* Fixed the offline indicator sometimes showing you as offline when your connection was actually fine (e.g. on VPNs or certain Wi-Fi networks).
+* Fixed an error that could prevent locations added while offline from syncing.
+* Fixed the Add Log form allowing duplicate submissions, silently failing to save activities, and leaving old data in the form after saving.
+
 ## 0.3.0 (2026-08-19)
 
 ### Features

@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { mdiCloud, mdiMapMarker } from '@mdi/js'
 import { remult } from 'remult'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, toRaw, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { useDisplay } from 'vuetify'
+import router from '@/router'
 import { Location } from '@/shared/models/Location'
 import DatePicker from '@/components/date-picker/DatePicker.vue'
 import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
 import { Log } from '@/shared/models/Log'
 import { showAlert } from '@/scripts/alert'
+import { isNetworkError, queueMutation } from '@/scripts/outbox'
 import { Activity } from '@/shared/models/Activity'
 import { getUser } from '@/scripts/user'
 
@@ -25,6 +27,12 @@ const user = getUser()
 const { mobile } = useDisplay()
 const locations = ref<Location[]>([])
 const oneDay = ref(false)
+const saving = ref(false)
+
+watch(oneDay, (value) => {
+  if (value)
+    log.value.dateEnd = undefined
+})
 
 const selectedActivities = ref<{ template: ActivityTemplate, value?: number }[]>([])
 const currentlySelectedActivity = ref<ActivityTemplate | null>(null)
@@ -54,7 +62,7 @@ function addActivities() {
     selectedActivities.value.push({ template: currentlySelectedActivity.value })
 }
 
-function romeoveActivity(activity: { template: ActivityTemplate, value?: number }) {
+function removeActivity(activity: { template: ActivityTemplate, value?: number }) {
   selectedActivities.value = selectedActivities.value.filter(a => a.template.id !== activity.template.id)
 }
 const logRepo = remult.repo(Log)
@@ -68,17 +76,52 @@ async function addLog() {
     showAlert('Location is required')
     return
   }
-  const l = await logRepo.insert(log.value)
-  if (activities.value.length > 0) {
-    for (const activity of selectedActivities.value) {
-      activityRepo.insert({
+
+  saving.value = true
+  try {
+    if (!navigator.onLine) {
+      await queueLogOffline()
+      return
+    }
+
+    const l = await logRepo.insert(log.value)
+
+    const results = await Promise.allSettled(
+      selectedActivities.value.map(activity => activityRepo.insert({
         template: activity.template,
         value: activity.value,
         log: l,
-      })
-    }
+      })),
+    )
+    const failed = results.filter(r => r.status === 'rejected').length
+
+    if (failed > 0)
+      showAlert(`Log added, but ${failed} ${failed === 1 ? 'activity' : 'activities'} failed to save`)
+    else
+      showAlert('Log Added')
+
+    router.push({ name: 'logs' })
   }
-  showAlert('Log Added')
+  catch (err) {
+    if (isNetworkError(err)) {
+      await queueLogOffline()
+      return
+    }
+    showAlert('Failed to add log. Please try again.')
+  }
+  finally {
+    saving.value = false
+  }
+}
+
+async function queueLogOffline() {
+  await queueMutation('log', toRaw(log.value))
+  showAlert(
+    selectedActivities.value.length
+      ? 'Saved offline — will sync when you\'re back online. Activities couldn\'t be attached and will need to be added afterwards.'
+      : 'Saved offline — will sync when you\'re back online.',
+  )
+  router.push({ name: 'logs' })
 }
 </script>
 
@@ -90,7 +133,7 @@ async function addLog() {
           Add New Log
         </v-card-title>
         <v-card-text>
-          <v-form>
+          <v-form @submit.prevent="addLog">
             <v-text-field
               v-model="log.name"
               label="Name"
@@ -185,7 +228,7 @@ async function addLog() {
                     />
                     <v-btn
                       color="error"
-                      @click="romeoveActivity(activity)"
+                      @click="removeActivity(activity)"
                     >
                       Remove
                     </v-btn>
@@ -194,8 +237,10 @@ async function addLog() {
               </v-list-item>
             </v-list>
             <v-btn
+              type="submit"
               color="primary"
-              @click="addLog"
+              :loading="saving"
+              :disabled="saving"
             >
               Add Log
             </v-btn>

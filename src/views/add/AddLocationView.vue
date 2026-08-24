@@ -2,10 +2,11 @@
 import { mdiCampfire, mdiCrosshairsGps, mdiMapMarker } from '@mdi/js'
 import { LIcon, LMap, LMarker, LTileLayer } from '@maxel01/vue-leaflet'
 import { remult } from 'remult'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, toRaw, watch } from 'vue'
 import 'leaflet/dist/leaflet.css'
 import router from '@/router'
 import { showAlert } from '@/scripts/alert'
+import { isNetworkError, queueMutation } from '@/scripts/outbox'
 import { getUser } from '@/scripts/user'
 import { Location, campTypes, campTypesToText, type campTypesType } from '@/shared/models/Location'
 
@@ -202,17 +203,36 @@ async function addLog() {
 
   saving.value = true
   try {
+    if (!navigator.onLine) {
+      await queueLocationOffline()
+      return
+    }
+
     const locationRepo = remult.repo(Location)
     await locationRepo.insert(location.value)
     showAlert('Location added successfully')
     router.push({ name: 'locations' })
   }
-  catch {
+  catch (err) {
+    if (isNetworkError(err)) {
+      await queueLocationOffline()
+      return
+    }
     showAlert('Failed to add location')
   }
   finally {
     saving.value = false
   }
+}
+
+async function queueLocationOffline() {
+  // `user` is a remult entity relation object — the server derives it from
+  // the session on insert anyway, and it isn't structured-clone-safe for
+  // IndexedDB (unlike the online path, which just JSON-serializes it).
+  const { user: _user, ...payload } = toRaw(location.value)
+  await queueMutation('location', payload)
+  showAlert('Saved offline — will sync when you\'re back online.')
+  router.push({ name: 'locations' })
 }
 </script>
 
@@ -243,7 +263,7 @@ async function addLog() {
             <div class="d-flex align-center ga-4">
               <v-text-field
                 v-model="location.address" hide-details label="Address" required variant="solo-filled"
-                :prepend-inner-icon="mdiMapMarker" @keyup.enter="findAddress"
+                autocomplete="street-address" :prepend-inner-icon="mdiMapMarker" @keyup.enter="findAddress"
               />
               <v-btn size="large" color="primary" :loading="findingAddress" :disabled="findDisabled" @click="findAddress">
                 Find
