@@ -1,15 +1,16 @@
 import { Allow, Entity, Fields, Relations, remult } from 'remult'
 import { User } from './auth/User'
 
-export const campTypes = ['remote', '2wdAcess', '4wdAcess', 'bushCamp', 'unknown']
+export const campTypes = ['remote', '2wdAcess', '4wdAcess', 'bushCamp', 'nonCampground', 'unknown']
 
-export type campTypesType = 'remote' | '2wdAcess' | '4wdAcess' | 'bushCamp' | 'unknown'
+export type campTypesType = 'remote' | '2wdAcess' | '4wdAcess' | 'bushCamp' | 'nonCampground' | 'unknown'
 
 const campTypeText: Record<campTypesType, string> = {
   'remote': 'Remote',
   '2wdAcess': '2WD Access',
   '4wdAcess': '4WD Access',
   'bushCamp': 'Bush Camp',
+  'nonCampground': 'Non-Campground',
   'unknown': 'Unknown',
 }
 
@@ -18,6 +19,7 @@ const campTypeColor: Record<campTypesType, string> = {
   '2wdAcess': '#1976d2',
   '4wdAcess': '#f57c00',
   'bushCamp': '#6d4c41',
+  'nonCampground': '#5e35b1',
   'unknown': '#757575',
 }
 

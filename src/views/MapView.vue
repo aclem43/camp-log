@@ -17,14 +17,18 @@ const center = ref<[number, number]>([47.41322, -1.219482])
 const locations = ref<Location[]>([])
 const locationIdsWithLogs = ref<Set<number>>(new Set())
 const onlyWithLogs = ref(false)
+const onlyCampgrounds = ref(false)
 const locationRepo = remult.repo(Location)
 const logRepo = remult.repo(Log)
 const user = getUser()
 
 const visibleLocations = computed(() => {
-  if (!onlyWithLogs.value)
-    return locations.value
-  return locations.value.filter(l => locationIdsWithLogs.value.has(l.id))
+  let result = locations.value
+  if (onlyWithLogs.value)
+    result = result.filter(l => locationIdsWithLogs.value.has(l.id))
+  if (onlyCampgrounds.value)
+    result = result.filter(l => l.type !== 'nonCampground')
+  return result
 })
 
 onActivated(async () => {
@@ -63,7 +67,15 @@ onActivated(async () => {
     <div class="map-legend">
       <v-switch
         v-model="onlyWithLogs"
-        label="Only show campsites with logs"
+        label="Only show locations with logs"
+        color="primary"
+        density="compact"
+        hide-details
+        class="map-legend-filter"
+      />
+      <v-switch
+        v-model="onlyCampgrounds"
+        label="Only show campgrounds"
         color="primary"
         density="compact"
         hide-details
