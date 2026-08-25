@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.2 (2026-08-25)
+
+### Bug Fixes
+
+* Fixed the app failing to start after deploying this version with photo uploads enabled.
+
 ## 1.1.1 (2026-08-25)
 
 ### Bug Fixes
