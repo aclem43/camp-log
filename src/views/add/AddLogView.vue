@@ -9,6 +9,7 @@ import { Location } from '@/shared/models/Location'
 import DatePicker from '@/components/date-picker/DatePicker.vue'
 import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
 import { Log } from '@/shared/models/Log'
+import { LogLocation } from '@/shared/models/LogLocation'
 import { showAlert } from '@/scripts/alert'
 import { isNetworkError, queueMutation } from '@/scripts/outbox'
 import { Activity } from '@/shared/models/Activity'
@@ -27,6 +28,7 @@ const log = ref<Omit<Log, 'id' >>({
 const user = getUser()
 const { mobile } = useDisplay()
 const locations = ref<Location[]>([])
+const selectedLocations = ref<Location[]>([])
 const oneDay = ref(false)
 const saving = ref(false)
 
@@ -73,13 +75,14 @@ function removeActivity(activity: { template: ActivityTemplate, value?: number }
 }
 const logRepo = remult.repo(Log)
 const activityRepo = remult.repo(Activity)
+const logLocationRepo = remult.repo(LogLocation)
 async function addLog() {
   if (!log.value.name || !log.value.dateStart) {
     showAlert('Name and Start Date are required')
     return
   }
-  if (!log.value.location) {
-    showAlert('Location is required')
+  if (!selectedLocations.value.length) {
+    showAlert('At least one location is required')
     return
   }
 
@@ -92,19 +95,35 @@ async function addLog() {
 
     const l = await logRepo.insert(log.value)
 
-    const results = await Promise.allSettled(
-      selectedActivities.value.map(activity => activityRepo.insert({
-        template: activity.template,
-        value: activity.value,
-        log: l,
-      })),
-    )
-    const failed = results.filter(r => r.status === 'rejected').length
+    const [activityResults, locationResults] = await Promise.all([
+      Promise.allSettled(
+        selectedActivities.value.map(activity => activityRepo.insert({
+          template: activity.template,
+          value: activity.value,
+          log: l,
+        })),
+      ),
+      Promise.allSettled(
+        selectedLocations.value.map(location => logLocationRepo.insert({
+          location,
+          log: l,
+        })),
+      ),
+    ])
+    const failedActivities = activityResults.filter(r => r.status === 'rejected').length
+    const failedLocations = locationResults.filter(r => r.status === 'rejected').length
 
-    if (failed > 0)
-      showAlert(`Log added, but ${failed} ${failed === 1 ? 'activity' : 'activities'} failed to save`)
-    else
+    if (failedActivities > 0 || failedLocations > 0) {
+      const parts = []
+      if (failedActivities > 0)
+        parts.push(`${failedActivities} ${failedActivities === 1 ? 'activity' : 'activities'}`)
+      if (failedLocations > 0)
+        parts.push(`${failedLocations} ${failedLocations === 1 ? 'location' : 'locations'}`)
+      showAlert(`Log added, but ${parts.join(' and ')} failed to save`)
+    }
+    else {
       showAlert('Log Added')
+    }
 
     router.push({ name: 'logs' })
   }
@@ -121,7 +140,10 @@ async function addLog() {
 }
 
 async function queueLogOffline() {
-  await queueMutation('log', toRaw(log.value))
+  await queueMutation('log', {
+    ...toRaw(log.value),
+    locationIds: selectedLocations.value.map(l => l.id),
+  })
   showAlert(
     selectedActivities.value.length
       ? 'Saved offline — will sync when you\'re back online. Activities couldn\'t be attached and will need to be added afterwards.'
@@ -155,13 +177,17 @@ async function queueLogOffline() {
             />
 
             <v-autocomplete
-              v-model="log.location"
-              label="Location"
+              v-model="selectedLocations"
+              label="Locations"
               variant="solo-filled"
               :items="locations"
               :prepend-inner-icon="mdiMapMarker"
               item-title="name"
               item-value="id"
+              multiple
+              chips
+              closable-chips
+              return-object
               no-filter
               @update:search="debouncedSearchLocations"
             />
