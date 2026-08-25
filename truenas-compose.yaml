@@ -1,0 +1,41 @@
+services:
+  app:
+    image: ghcr.io/aclem43/camp-log:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_TYPE: postgres
+      DATABASE_URL: postgresql://camp-log:CHANGE_ME@postgres:5432/camp-log
+      MODE: production
+      PORT: "3000"
+      BETTER_AUTH_SECRET: CHANGE_ME
+      BETTER_AUTH_URL: http://CHANGE_ME:3000
+      GOOGLE_CLIENT_ID: CHANGE_ME
+      GOOGLE_CLIENT_SECRET: CHANGE_ME
+      OPENCAGE_API_KEY: CHANGE_ME
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: camp-log
+      POSTGRES_PASSWORD: CHANGE_ME
+      POSTGRES_DB: camp-log
+    volumes:
+      - /mnt/CHANGE_ME/apps/camp-log/pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  watchtower:
+    image: containrrr/watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 300 --cleanup
