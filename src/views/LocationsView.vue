@@ -23,7 +23,7 @@ type LocationRow = (Location & { pending?: undefined }) | PendingLocationRow
 const locations = ref<Location[]>([])
 const user = getUser()
 async function loadLocations() {
-  locations.value = await remult.repo(Location).find({where: {user:user.value!}, orderBy: { name: 'asc' } } )
+  locations.value = await remult.repo(Location).find({ where: { user: user.value! }, orderBy: { name: 'asc' } })
 }
 
 const pendingLocationRows = computed<PendingLocationRow[]>(() => pendingItems.value
@@ -85,6 +85,7 @@ async function deleteLocation(location: Location) {
               density="compact"
               :headers="[
                 { title: 'Name', value: 'name', sortable: true },
+                { title: 'Nicknames', value: 'nicknames', sortable: false },
                 { title: 'Notes', value: 'notes', sortable: true },
                 { title: 'Address', value: 'address', sortable: true },
                 { title: 'Actions', value: 'actions', sortable: false, width: '100px' },
