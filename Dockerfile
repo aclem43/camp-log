@@ -23,6 +23,8 @@ COPY --chown=node:node package.json tsconfig.server.json ./
 COPY --chown=node:node src/server ./src/server
 COPY --chown=node:node src/shared ./src/shared
 
+RUN mkdir -p /app/uploads && chown node:node /app/uploads
+
 USER node
 
 EXPOSE 3000
