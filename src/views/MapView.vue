@@ -3,11 +3,13 @@ import { mdiTent } from '@mdi/js'
 
 import 'leaflet/dist/leaflet.css'
 import { LControlLayers, LIcon, LLayerGroup, LMap, LMarker, LPopup, LTileLayer } from '@maxel01/vue-leaflet'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onActivated, ref } from 'vue'
 import { remult } from 'remult'
 import { getUser } from '@/scripts/user'
 import { Location, campTypes, campTypesToColor, campTypesToText, type campTypesType } from '@/shared/models/Location'
 import { Log } from '@/shared/models/Log'
+
+defineOptions({ name: 'MapView' })
 
 const zoom = ref(6)
 const center = ref<[number, number]>([47.41322, -1.219482])
@@ -25,7 +27,7 @@ const visibleLocations = computed(() => {
   return locations.value.filter(l => locationIdsWithLogs.value.has(l.id))
 })
 
-onMounted(async () => {
+onActivated(async () => {
   const [locs, logs] = await Promise.all([
     locationRepo.find({ where: { user: user.value! } }),
     logRepo.find({ where: { user: user.value! }, include: { location: true } }),
