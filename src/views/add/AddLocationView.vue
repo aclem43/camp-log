@@ -15,6 +15,7 @@ const user = getUser()
 const location = ref<Omit<Location, 'id'>>({
   name: '',
   notes: '',
+  nicknames: '',
   latitude: 0,
   longitude: 0,
   type: '2wdAcess',
@@ -23,6 +24,11 @@ const location = ref<Omit<Location, 'id'>>({
   state: '',
   country: '',
   user: user.value!,
+})
+
+const nicknamesArray = computed<string[]>({
+  get: () => location.value.nicknames.split(',').map(n => n.trim()).filter(Boolean),
+  set: (value) => { location.value.nicknames = value.join(', ') },
 })
 
 const campTypesText = campTypes.map(t => ({ title: campTypesToText(t as campTypesType), value: t }))
@@ -247,6 +253,10 @@ async function queueLocationOffline() {
         <v-card-text>
           <div class="d-flex flex-column ga-6">
             <v-text-field v-model="location.name" hide-details label="Name" required variant="solo-filled" />
+            <v-combobox
+              v-model="nicknamesArray" hide-details label="Nicknames" multiple chips closable-chips
+              variant="solo-filled" hint="Alternate names to help you find this place later" persistent-hint
+            />
             <v-textarea v-model="location.notes" hide-details label="Notes" required variant="solo-filled" />
             <v-select
               v-model="location.type" hide-details label="Type" required :items="campTypesText"

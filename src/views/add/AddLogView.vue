@@ -43,7 +43,12 @@ const locationRepo = remult.repo(Location)
 
 async function searchLocations(query: string) {
   locations.value = await locationRepo.find({
-    where: { user: user.value!, ...(query ? { name: { $contains: query } } : {}) },
+    where: {
+      user: user.value!,
+      ...(query
+        ? { $or: [{ name: { $contains: query } }, { nicknames: { $contains: query } }] }
+        : {}),
+    },
     limit: 10,
   })
 }

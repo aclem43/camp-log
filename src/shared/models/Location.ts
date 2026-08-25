@@ -50,6 +50,12 @@ export class Location {
   @Fields.string()
   notes = ''
 
+  // Comma-separated alternate names (e.g. "KP, Scout HQ") - lets search and
+  // the Terrain import matcher find a location by a name other than its
+  // canonical one.
+  @Fields.string()
+  nicknames = ''
+
   @Fields.literal(() => campTypes)
   type: campTypesType = '2wdAcess'
 

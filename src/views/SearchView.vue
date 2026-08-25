@@ -75,6 +75,7 @@ function locationWhere(query: string) {
     user: user.value!,
     $or: [
       { name: { $contains: query } },
+      { nicknames: { $contains: query } },
       { notes: { $contains: query } },
       { address: { $contains: query } },
       { city: { $contains: query } },
