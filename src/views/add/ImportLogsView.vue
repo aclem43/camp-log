@@ -5,12 +5,14 @@ import { remult } from 'remult'
 import DatePicker from '@/components/date-picker/DatePicker.vue'
 import { Location, campTypes, campTypesToText, type campTypesType } from '@/shared/models/Location'
 import { Log } from '@/shared/models/Log'
+import { LogLocation } from '@/shared/models/LogLocation'
 import { showAlert } from '@/scripts/alert'
 import { getUser } from '@/scripts/user'
 
 const user = getUser()
 const locationRepo = remult.repo(Location)
 const logRepo = remult.repo(Log)
+const logLocationRepo = remult.repo(LogLocation)
 
 interface TerrainEntry {
   id: string
@@ -356,16 +358,17 @@ async function importCurrent() {
   saving.value = true
   try {
     const location = await resolveLocation(row)
-    await logRepo.insert({
+    const log = await logRepo.insert({
       name: row.name,
       description: row.description,
       weather: row.weather,
       dateStart: row.dateStart,
       dateEnd: row.dateEnd,
-      location,
       terrainId: row.raw.id,
       user: user.value!,
     })
+    if (location)
+      await logLocationRepo.insert({ log, location })
     row.status = 'success'
     row.error = undefined
     if (currentIndex.value < rows.value.length - 1)

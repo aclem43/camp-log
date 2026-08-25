@@ -8,7 +8,7 @@ import { remult } from 'remult'
 import { useRoute } from 'vue-router'
 import { getUser } from '@/scripts/user'
 import { Location, campTypes, campTypesToColor, campTypesToText, type campTypesType } from '@/shared/models/Location'
-import { Log } from '@/shared/models/Log'
+import { LogLocation } from '@/shared/models/LogLocation'
 
 defineOptions({ name: 'MapView' })
 
@@ -23,7 +23,7 @@ const locationIdsWithLogs = ref<Set<number>>(new Set())
 const onlyWithLogs = ref(false)
 const onlyCampgrounds = ref(false)
 const locationRepo = remult.repo(Location)
-const logRepo = remult.repo(Log)
+const logLocationRepo = remult.repo(LogLocation)
 const user = getUser()
 
 const visibleLocations = computed(() => {
@@ -36,12 +36,12 @@ const visibleLocations = computed(() => {
 })
 
 onActivated(async () => {
-  const [locs, logs] = await Promise.all([
+  const [locs, links] = await Promise.all([
     locationRepo.find({ where: { user: user.value! } }),
-    logRepo.find({ where: { user: user.value! }, include: { location: true } }),
+    logLocationRepo.find({ where: { user: user.value! }, include: { location: true } }),
   ])
   locations.value = locs.filter(l => l.latitude !== 0 && l.longitude !== 0)
-  locationIdsWithLogs.value = new Set(logs.filter(log => log.location).map(log => log.location!.id))
+  locationIdsWithLogs.value = new Set(links.filter(link => link.location).map(link => link.location!.id))
 
   const focusId = Number(route.query.location)
   const focusedLocation = Number.isFinite(focusId) ? locations.value.find(l => l.id === focusId) : undefined
@@ -54,7 +54,8 @@ onActivated(async () => {
   }
   else {
     focusedLocationId.value = null
-    center.value = [locations.value[0].latitude!, locations.value[0].longitude!]
+    if (locations.value.length)
+      center.value = [locations.value[0].latitude!, locations.value[0].longitude!]
   }
 })
 </script>
@@ -62,7 +63,34 @@ onActivated(async () => {
 <template>
   <div style="height: 100%; width: 100%; position: relative;">
     <LMap v-model:zoom="zoom" :center="center">
-      <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" layer-type="base" name="OpenStreetMap" />
+      <LTileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        layer-type="base"
+        name="OpenStreetMap"
+        attribution="&copy; OpenStreetMap contributors"
+      />
+      <LTileLayer
+        url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+        layer-type="base"
+        name="Topographic"
+        :visible="false"
+        attribution="&copy; OpenStreetMap contributors, SRTM | &copy; OpenTopoMap (CC-BY-SA)"
+      />
+      <LTileLayer
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+        layer-type="base"
+        name="Satellite"
+        :visible="false"
+        attribution="Tiles &copy; Esri"
+      />
+      <LTileLayer
+        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        layer-type="base"
+        name="Dark"
+        :visible="false"
+        attribution="&copy; OpenStreetMap contributors &copy; CARTO"
+      />
+      <LControlLayers />
       <LLayerGroup name="Locations" layer-type="overlay">
         <LMarker v-for="loc in visibleLocations" :key="loc.id" :lat-lng="[loc.latitude, loc.longitude]" :title="loc.name">
           <LIcon class-name="location-marker-icon" :icon-size="[30, 30]" :icon-anchor="[15, 15]" :popup-anchor="[0, -15]">
@@ -81,7 +109,6 @@ onActivated(async () => {
             </router-link>
           </LPopup>
         </LMarker>
-        <LControlLayers />
       </LLayerGroup>
     </LMap>
 
@@ -159,8 +186,8 @@ onActivated(async () => {
   gap: 4px;
   padding: 8px 12px;
   border-radius: 6px;
-  background: white;
-  color: #333;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
   font-size: 13px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
@@ -177,7 +204,8 @@ onActivated(async () => {
 
 .map-legend-filter :deep(.v-label) {
   font-size: 13px;
-  color: #333;
+  color: inherit;
+  opacity: 1;
 }
 
 .map-legend-swatch {
@@ -187,5 +215,33 @@ onActivated(async () => {
   border-radius: 50%;
   border: 1px solid white;
   box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+.leaflet-control-layers,
+.leaflet-bar a {
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.leaflet-bar a:hover {
+  background: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-on-surface-variant));
+}
+
+.leaflet-control-layers-toggle {
+  background-color: rgb(var(--v-theme-surface));
+}
+
+.leaflet-control-layers-expanded {
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.leaflet-control-layers-separator {
+  border-color: rgba(var(--v-theme-on-surface), 0.2);
+}
+
+.v-theme--dark .leaflet-control-layers-toggle {
+  filter: invert(1);
 }
 </style>

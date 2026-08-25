@@ -3,6 +3,8 @@ import { remult } from 'remult'
 import { computed, onMounted, ref, watch } from 'vue'
 import { mdiCloseCircle, mdiDelete, mdiEye, mdiMagnify, mdiSync } from '@mdi/js'
 import { Log } from '@/shared/models/Log'
+import { LogLocation } from '@/shared/models/LogLocation'
+import type { Location } from '@/shared/models/Location'
 import { getUser } from '@/scripts/user'
 import { askConfirm } from '@/scripts/confirm'
 import { pendingItems, removePending, retryPending } from '@/scripts/outbox'
@@ -16,7 +18,6 @@ interface PendingLogRow {
   id: string
   name: string
   description: string
-  location?: { name: string }
   dateStart?: Date
   dateEnd?: Date
 }
@@ -32,16 +33,33 @@ const sortOptions: { title: string, value: SortOrder }[] = [
 ]
 
 const logs = ref<Log[]>([])
+const locationsByLogId = ref<Map<number, Location[]>>(new Map())
 const page = ref(1)
 const search = ref('')
 const sortOrder = ref<SortOrder>('dateDesc')
 
 const logRepo = remult.repo(Log)
+const logLocationRepo = remult.repo(LogLocation)
 
 const user = getUser()
 
+function locationsFor(id: number | string) {
+  return locationsByLogId.value.get(Number(id)) ?? []
+}
+
 async function load() {
-  logs.value = await logRepo.find({ where: { user: user.value! }, include: { location: true } })
+  logs.value = await logRepo.find({ where: { user: user.value! } })
+
+  const links = await logLocationRepo.find({ where: { user: user.value! }, include: { log: true, location: true } })
+  const map = new Map<number, Location[]>()
+  for (const link of links) {
+    if (!link.log || !link.location)
+      continue
+    const existing = map.get(link.log.id) ?? []
+    existing.push(link.location)
+    map.set(link.log.id, existing)
+  }
+  locationsByLogId.value = map
 }
 
 async function deleteLog(log: Log) {
@@ -62,7 +80,6 @@ const pendingLogRows = computed<PendingLogRow[]>(() => pendingItems.value
     id: item.id,
     name: (item.payload.name as string) || 'Untitled log',
     description: (item.payload.description as string) || '',
-    location: undefined,
     dateStart: item.payload.dateStart as Date | undefined,
   })))
 
@@ -74,7 +91,7 @@ const filteredRows = computed(() => {
     ? allRows.value.filter(row =>
         row.name.toLowerCase().includes(query)
         || row.description.toLowerCase().includes(query)
-        || (!row.pending && !!row.location?.name.toLowerCase().includes(query)),
+        || (!row.pending && locationsFor(row.id).some(l => l.name.toLowerCase().includes(query))),
       )
     : allRows.value
 
@@ -195,10 +212,15 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
             {{ item.dateStart?.toLocaleDateString() }}<template v-if="item.dateEnd">
               to {{ item.dateEnd.toLocaleDateString() }}
             </template>
-            <template v-if="!item.pending && item.location">
-              · <router-link :to="{ name: 'map', query: { location: item.location.id } }" class="text-primary">
-                {{ item.location.name }}
-              </router-link>
+            <template v-if="!item.pending && locationsFor(item.id).length">
+              ·
+              <template v-for="(loc, i) in locationsFor(item.id)" :key="loc.id">
+                <router-link :to="{ name: 'map', query: { location: loc.id } }" class="text-primary">
+                  {{ loc.name }}
+                </router-link><template v-if="i < locationsFor(item.id).length - 1">
+                  ,
+                </template>
+              </template>
             </template>
           </v-card-subtitle>
           <v-card-text v-if="item.description" style="white-space: pre-wrap;">
