@@ -161,7 +161,9 @@ watch(selectedTypes, () => searchQuery(), { deep: true, immediate: true })
               :key="`${result.type}-${result.id}`"
               :title="result.title"
               :subtitle="result.subtitle"
-              :to="{ name: result.type, params: { id: result.id } }"
+              :to="result.type === 'location'
+                ? { name: 'map', query: { location: result.id } }
+                : { name: result.type, params: { id: result.id } }"
             >
               <template #prepend>
                 <v-icon :icon="result.icon" :color="result.color" />
