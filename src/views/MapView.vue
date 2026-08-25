@@ -54,7 +54,8 @@ onActivated(async () => {
   }
   else {
     focusedLocationId.value = null
-    center.value = [locations.value[0].latitude!, locations.value[0].longitude!]
+    if (locations.value.length)
+      center.value = [locations.value[0].latitude!, locations.value[0].longitude!]
   }
 })
 </script>
