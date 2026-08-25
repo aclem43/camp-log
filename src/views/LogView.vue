@@ -4,6 +4,7 @@ import { onMounted, ref } from 'vue'
 import { mdiArrowLeft } from '@mdi/js'
 import { Log } from '@/shared/models/Log'
 import { Activity } from '@/shared/models/Activity'
+import PhotoGallery from '@/components/PhotoGallery.vue'
 import type { ActivityTemplate } from '@/shared/models/ActivityTemplate'
 import { getUser } from '@/scripts/user'
 import router from '@/router'
@@ -140,6 +141,9 @@ onMounted(load)
               </v-list-item-subtitle>
             </v-list-item>
           </v-list>
+
+          <v-divider class="my-4" />
+          <PhotoGallery :log-id="log.id" />
         </v-card-text>
       </v-card>
     </v-col>

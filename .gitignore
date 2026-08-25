@@ -15,6 +15,7 @@ coverage
 *.local
 
 /db
+/uploads
 
 /cypress/videos/
 /cypress/screenshots/

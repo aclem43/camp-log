@@ -3,6 +3,7 @@ import { mdiArrowLeft, mdiCampfire, mdiDelete, mdiMapMarker } from '@mdi/js'
 import { computed, onMounted, ref } from 'vue'
 import { remult } from 'remult'
 import { Location, campTypes, campTypesToText, type campTypesType } from '@/shared/models/Location'
+import PhotoGallery from '@/components/PhotoGallery.vue'
 import { showAlert } from '@/scripts/alert'
 import { getUser } from '@/scripts/user'
 import router from '@/router'
@@ -173,6 +174,9 @@ async function deleteLocation() {
                 Delete
               </v-btn>
             </div>
+
+            <v-divider />
+            <PhotoGallery :location-id="location.id" />
           </div>
         </v-card-text>
       </v-card>
