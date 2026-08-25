@@ -4,6 +4,7 @@ import { onMounted, ref } from 'vue'
 import { remult } from 'remult'
 import { Photo } from '@/shared/models/Photo'
 import { showAlert } from '@/scripts/alert'
+import { askConfirm } from '@/scripts/confirm'
 
 const props = defineProps<{
   logId?: number
@@ -17,6 +18,46 @@ const loading = ref(true)
 const uploading = ref(false)
 const lightboxPhoto = ref<Photo | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+
+const MAX_DIMENSION = 2000
+const JPEG_QUALITY = 0.82
+// Camera JPEGs are the case worth the CPU cost - already-small files, and
+// other formats (PNG, WebP, GIF) are left alone rather than risking
+// flattened transparency or broken animation for little upload-size benefit.
+const COMPRESS_ABOVE_BYTES = 1.5 * 1024 * 1024
+
+async function compressImage(file: File): Promise<File> {
+  if (file.type !== 'image/jpeg' || file.size <= COMPRESS_ABOVE_BYTES)
+    return file
+
+  try {
+    const bitmap = await createImageBitmap(file)
+    const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height))
+    const width = Math.round(bitmap.width * scale)
+    const height = Math.round(bitmap.height * scale)
+
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      bitmap.close()
+      return file
+    }
+    ctx.drawImage(bitmap, 0, 0, width, height)
+    bitmap.close()
+
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY))
+    if (!blob || blob.size >= file.size)
+      return file
+
+    return new File([blob], file.name, { type: 'image/jpeg', lastModified: file.lastModified })
+  }
+  catch {
+    // Unsupported browser or a corrupt/undecodable image - upload the original.
+    return file
+  }
+}
 
 async function loadPhotos() {
   loading.value = true
@@ -42,7 +83,8 @@ async function onFilesSelected(event: Event) {
   uploading.value = true
   let failures = 0
 
-  for (const file of Array.from(files)) {
+  for (const rawFile of Array.from(files)) {
+    const file = await compressImage(rawFile)
     const formData = new FormData()
     formData.append('file', file)
     if (props.logId)
@@ -71,8 +113,7 @@ async function onFilesSelected(event: Event) {
 }
 
 async function deletePhoto(photo: Photo) {
-  // eslint-disable-next-line no-alert
-  const confirmed = window.confirm('Delete this photo?')
+  const confirmed = await askConfirm('Delete this photo?', { confirmText: 'Delete' })
   if (!confirmed)
     return
 
