@@ -62,7 +62,34 @@ onActivated(async () => {
 <template>
   <div style="height: 100%; width: 100%; position: relative;">
     <LMap v-model:zoom="zoom" :center="center">
-      <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" layer-type="base" name="OpenStreetMap" />
+      <LTileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        layer-type="base"
+        name="OpenStreetMap"
+        attribution="&copy; OpenStreetMap contributors"
+      />
+      <LTileLayer
+        url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+        layer-type="base"
+        name="Topographic"
+        :visible="false"
+        attribution="&copy; OpenStreetMap contributors, SRTM | &copy; OpenTopoMap (CC-BY-SA)"
+      />
+      <LTileLayer
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+        layer-type="base"
+        name="Satellite"
+        :visible="false"
+        attribution="Tiles &copy; Esri"
+      />
+      <LTileLayer
+        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        layer-type="base"
+        name="Dark"
+        :visible="false"
+        attribution="&copy; OpenStreetMap contributors &copy; CARTO"
+      />
+      <LControlLayers />
       <LLayerGroup name="Locations" layer-type="overlay">
         <LMarker v-for="loc in visibleLocations" :key="loc.id" :lat-lng="[loc.latitude, loc.longitude]" :title="loc.name">
           <LIcon class-name="location-marker-icon" :icon-size="[30, 30]" :icon-anchor="[15, 15]" :popup-anchor="[0, -15]">
@@ -81,7 +108,6 @@ onActivated(async () => {
             </router-link>
           </LPopup>
         </LMarker>
-        <LControlLayers />
       </LLayerGroup>
     </LMap>
 
