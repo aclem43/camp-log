@@ -111,7 +111,7 @@ onMounted(load)
             <v-list-subheader>
               Location
             </v-list-subheader>
-            <v-list-item>
+            <v-list-item :to="log.location ? { name: 'map', query: { location: log.location.id } } : undefined">
               <v-list-item-title>
                 {{ log.location?.name }}
               </v-list-item-title>
