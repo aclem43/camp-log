@@ -25,7 +25,7 @@ async function loadLocations() {
   locationsLoading.value = true
   locationsError.value = false
   try {
-    locations.value = await remult.repo(Location).find({ where: { user: user.value! }, limit: LIST_LIMIT })
+    locations.value = await remult.repo(Location).find({ where: { user: user.value! }, limit: LIST_LIMIT, orderBy: { id: 'desc' } })
   }
   catch {
     locationsError.value = true

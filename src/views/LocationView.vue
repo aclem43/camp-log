@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css'
 import { Location, campTypes, campTypesToText, type campTypesType } from '@/shared/models/Location'
 import PhotoGallery from '@/components/PhotoGallery.vue'
 import { showAlert } from '@/scripts/alert'
+import { askConfirm } from '@/scripts/confirm'
 import { getUser } from '@/scripts/user'
 import router from '@/router'
 
@@ -126,8 +127,7 @@ async function deleteLocation() {
   if (!location.value)
     return
 
-  // eslint-disable-next-line no-alert
-  const confirmed = window.confirm('Are you sure you want to delete this location?')
+  const confirmed = await askConfirm('Are you sure you want to delete this location? This cannot be undone.', { confirmText: 'Delete' })
   if (!confirmed)
     return
 
