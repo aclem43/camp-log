@@ -1,10 +1,11 @@
 import { remult } from 'remult'
-import { Location } from '@/shared/models/Location'
-import { Log } from '@/shared/models/Log'
-import { offline } from '@/scripts/connectivity'
-import { checkLogin } from '@/scripts/user'
 import { showAlert } from './alert'
 import { isNetworkError, markFailed, pendingItems, removePending } from './outbox'
+import { Location } from '@/shared/models/Location'
+import { Log } from '@/shared/models/Log'
+import { LogLocation } from '@/shared/models/LogLocation'
+import { offline } from '@/scripts/connectivity'
+import { checkLogin } from '@/scripts/user'
 
 let syncing = false
 
@@ -17,10 +18,18 @@ export async function syncOutbox() {
     const items = pendingItems.value.filter(item => item.status === 'pending')
     for (const item of items) {
       try {
-        if (item.entity === 'log')
-          await remult.repo(Log).insert(item.payload as Partial<Log>)
-        else
+        if (item.entity === 'log') {
+          const { locationIds, ...logPayload } = item.payload as Partial<Log> & { locationIds?: number[] }
+          const log = await remult.repo(Log).insert(logPayload)
+          if (locationIds?.length) {
+            await Promise.allSettled(
+              locationIds.map(id => remult.repo(LogLocation).insert({ log, location: { id } as Location })),
+            )
+          }
+        }
+        else {
           await remult.repo(Location).insert(item.payload as Partial<Location>)
+        }
         await removePending(item.id)
       }
       catch (err) {

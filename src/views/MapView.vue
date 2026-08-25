@@ -8,7 +8,7 @@ import { remult } from 'remult'
 import { useRoute } from 'vue-router'
 import { getUser } from '@/scripts/user'
 import { Location, campTypes, campTypesToColor, campTypesToText, type campTypesType } from '@/shared/models/Location'
-import { Log } from '@/shared/models/Log'
+import { LogLocation } from '@/shared/models/LogLocation'
 
 defineOptions({ name: 'MapView' })
 
@@ -23,7 +23,7 @@ const locationIdsWithLogs = ref<Set<number>>(new Set())
 const onlyWithLogs = ref(false)
 const onlyCampgrounds = ref(false)
 const locationRepo = remult.repo(Location)
-const logRepo = remult.repo(Log)
+const logLocationRepo = remult.repo(LogLocation)
 const user = getUser()
 
 const visibleLocations = computed(() => {
@@ -36,12 +36,12 @@ const visibleLocations = computed(() => {
 })
 
 onActivated(async () => {
-  const [locs, logs] = await Promise.all([
+  const [locs, links] = await Promise.all([
     locationRepo.find({ where: { user: user.value! } }),
-    logRepo.find({ where: { user: user.value! }, include: { location: true } }),
+    logLocationRepo.find({ where: { user: user.value! }, include: { location: true } }),
   ])
   locations.value = locs.filter(l => l.latitude !== 0 && l.longitude !== 0)
-  locationIdsWithLogs.value = new Set(logs.filter(log => log.location).map(log => log.location!.id))
+  locationIdsWithLogs.value = new Set(links.filter(link => link.location).map(link => link.location!.id))
 
   const focusId = Number(route.query.location)
   const focusedLocation = Number.isFinite(focusId) ? locations.value.find(l => l.id === focusId) : undefined

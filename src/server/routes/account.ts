@@ -6,6 +6,7 @@ import { Activity } from '../../shared/models/Activity'
 import { ActivityTemplate } from '../../shared/models/ActivityTemplate'
 import { Location, campTypes } from '../../shared/models/Location'
 import { Log } from '../../shared/models/Log'
+import { LogLocation } from '../../shared/models/LogLocation'
 import { User, unitPreferences } from '../../shared/models/auth/User'
 import { auth } from '../auth'
 
@@ -80,15 +81,25 @@ router.get('/export-data', async (req, res) => {
 
   const userFilter = { user: { $id: authUser.id } }
 
-  const [locations, activityTemplates, logs, activities] = await Promise.all([
+  const [locations, activityTemplates, logs, activities, logLocations] = await Promise.all([
     remult.repo(Location).find({ where: userFilter }),
     remult.repo(ActivityTemplate).find({ where: userFilter }),
-    remult.repo(Log).find({ where: userFilter, include: { location: true } }),
+    remult.repo(Log).find({ where: userFilter }),
     remult.repo(Activity).find({ where: userFilter, include: { template: true, log: true } }),
+    remult.repo(LogLocation).find({ where: userFilter, include: { log: true, location: true } }),
   ])
 
+  const locationIdsByLogId = new Map<number, number[]>()
+  for (const link of logLocations) {
+    if (!link.log || !link.location)
+      continue
+    const existing = locationIdsByLogId.get(link.log.id) ?? []
+    existing.push(link.location.id)
+    locationIdsByLogId.set(link.log.id, existing)
+  }
+
   const payload = {
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     data: {
       locations: locations.map(l => ({
@@ -116,7 +127,7 @@ router.get('/export-data', async (req, res) => {
         weather: l.weather,
         dateStart: l.dateStart,
         dateEnd: l.dateEnd,
-        locationId: l.location?.id ?? null,
+        locationIds: locationIdsByLogId.get(l.id) ?? [],
       })),
       activities: activities.map(a => ({
         id: a.id,
@@ -153,6 +164,7 @@ router.post('/import-data', async (req, res) => {
   const templateRepo = remult.repo(ActivityTemplate)
   const logRepo = remult.repo(Log)
   const activityRepo = remult.repo(Activity)
+  const logLocationRepo = remult.repo(LogLocation)
 
   const locationIdMap = new Map<number, Location>()
   const templateIdMap = new Map<number, ActivityTemplate>()
@@ -206,11 +218,22 @@ router.post('/import-data', async (req, res) => {
         weather: log.weather ?? '',
         dateStart: log.dateStart ? new Date(log.dateStart) : new Date(),
         dateEnd: log.dateEnd ? new Date(log.dateEnd) : undefined,
-        location: log.locationId != null ? locationIdMap.get(log.locationId) : undefined,
       })
       if (typeof log.id === 'number')
         logIdMap.set(log.id, created)
       counts.logs++
+
+      // v2 exports carry locationIds (many-to-many); older v1 exports carry
+      // a single locationId - support both so old export files still import.
+      const locationIds: number[] = Array.isArray(log.locationIds)
+        ? log.locationIds
+        : (typeof log.locationId === 'number' ? [log.locationId] : [])
+      for (const locationId of locationIds) {
+        const location = locationIdMap.get(locationId)
+        if (!location)
+          continue
+        await logLocationRepo.insert({ log: created, location })
+      }
     }
     catch {
       counts.failed++

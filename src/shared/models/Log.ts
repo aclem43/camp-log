@@ -1,5 +1,4 @@
 import { Allow, Entity, Fields, Relations, remult } from 'remult'
-import { Location } from './Location'
 import { User } from './auth/User'
 
 @Entity<Log>('log', {
@@ -36,7 +35,4 @@ export class Log {
 
   @Fields.date()
   dateEnd?: Date
-
-  @Relations.toOne(() => Location)
-  location?: Location
 }
