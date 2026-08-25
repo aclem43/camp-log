@@ -15,6 +15,7 @@ FROM node:20-slim
 WORKDIR /app
 
 ENV MODE=production
+ENV HOST=0.0.0.0
 
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
