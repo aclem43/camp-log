@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.2.0 (2026-08-26)
+
+### Features
+
+* Logs can now be edited after creation — update the name, description, weather, dates, locations, and activities instead of having to delete and recreate the whole log.
+* A log can now cover more than one location, for trips that span multiple campsites.
+* Location editing now lets you drag a pin on the map to set its position, instead of only entering latitude/longitude by hand.
+* Added new map base layers — Topographic, Satellite, and Dark — selectable from the map's layer control.
+* The Statistics page now shows total nights camped alongside activity totals.
+* The "Bush Camp" location type has been merged into "Remote", now labeled "Remote / Bush Camp".
+* Photo uploads are now compressed on your device before uploading, making uploads faster on slow connections.
+* The Home page's campsite list is now sorted with the most recently added first.
+* Deleting a photo or location now uses the app's own confirmation dialog instead of the browser's built-in popup.
+
+### Bug Fixes
+
+* Fixed a crash on the map view for accounts with no located campsites.
+* Fixed the map's legend and layer controls not adapting to dark mode.
+
+### Security
+
+* Restored security headers and response compression that had been temporarily disabled.
+
 ## 1.1.2 (2026-08-25)
 
 ### Bug Fixes
