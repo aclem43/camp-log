@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { mdiEye, mdiEyeOff, mdiFileUploadOutline, mdiMapMarker } from '@mdi/js'
+import { mdiChevronLeft, mdiChevronRight, mdiEye, mdiEyeOff, mdiFileUploadOutline, mdiMapMarker, mdiSkipNext } from '@mdi/js'
 import { computed, ref } from 'vue'
 import { remult } from 'remult'
-import { Location } from '@/shared/models/Location'
+import DatePicker from '@/components/date-picker/DatePicker.vue'
+import { Location, campTypes, campTypesToText, type campTypesType } from '@/shared/models/Location'
 import { Log } from '@/shared/models/Log'
 import { showAlert } from '@/scripts/alert'
 import { getUser } from '@/scripts/user'
@@ -33,9 +34,21 @@ interface TerrainExport {
   entries: TerrainEntry[]
 }
 
-// 'new' = create a location from locationText, 'none' = leave log unlinked,
-// a number = link to that existing location's id.
+// 'new' = create a location from the inline draft below, 'none' = leave the
+// log unlinked, a number = link to that existing location's id.
 type LocationChoice = number | 'new' | 'none'
+
+interface NewLocationDraft {
+  name: string
+  nicknames: string[]
+  type: campTypesType
+  address: string
+  city: string
+  state: string
+  country: string
+  latitude?: number
+  longitude?: number
+}
 
 interface ImportRow {
   raw: TerrainEntry
@@ -46,18 +59,21 @@ interface ImportRow {
   dateEnd?: Date
   locationText: string
   locationChoice: LocationChoice
-  include: boolean
-  status: 'pending' | 'success' | 'error'
+  newLocationDraft: NewLocationDraft
+  status: 'pending' | 'success' | 'skipped' | 'error'
   error?: string
 }
 
 const BRANCHES = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA', 'National']
+const campTypesText = campTypes.map(t => ({ title: campTypesToText(t as campTypesType), value: t }))
 
 const file = ref<File | null>(null)
 const rows = ref<ImportRow[]>([])
+const currentIndex = ref(0)
 const existingLocations = ref<Location[]>([])
-const importing = ref(false)
-const loadingLocations = ref(false)
+const loadingEntries = ref(false)
+const saving = ref(false)
+const findingAddress = ref(false)
 
 const branch = ref<string | null>(null)
 const memberNumber = ref('')
@@ -112,27 +128,56 @@ function buildDescription(entry: TerrainEntry): string {
   return lines.join('\n')
 }
 
-async function loadEntries(entries: TerrainEntry[]) {
-  loadingLocations.value = true
-  existingLocations.value = await locationRepo.find({ where: { user: user.value! } })
-  loadingLocations.value = false
+function buildRow(entry: TerrainEntry): ImportRow {
+  const locationText = entry.details?.location ?? ''
+  const match = findMatchingLocation(locationText)
+  return {
+    raw: entry,
+    name: entry.title.trim(),
+    description: buildDescription(entry),
+    weather: entry.details?.weather ?? '',
+    dateStart: new Date(entry.start_date),
+    dateEnd: entry.end_date ? new Date(entry.end_date) : undefined,
+    locationText,
+    locationChoice: match ? match.id : (locationText ? 'new' : 'none'),
+    newLocationDraft: {
+      name: locationText || entry.title.trim(),
+      nicknames: [],
+      type: 'unknown',
+      address: '',
+      city: '',
+      state: '',
+      country: '',
+    },
+    status: 'pending',
+  }
+}
 
+async function loadEntries(entries: TerrainEntry[]) {
+  loadingEntries.value = true
+  const [locations, alreadyImported] = await Promise.all([
+    locationRepo.find({ where: { user: user.value! } }),
+    entries.length
+      ? logRepo.find({ where: { user: user.value!, terrainId: entries.map(e => e.id) } })
+      : Promise.resolve([]),
+  ])
+  existingLocations.value = locations
+  loadingEntries.value = false
+
+  const importedIds = new Set(alreadyImported.map(l => l.terrainId))
   rows.value = entries.map((entry) => {
-    const locationText = entry.details?.location ?? ''
-    const match = findMatchingLocation(locationText)
-    return {
-      raw: entry,
-      name: entry.title.trim(),
-      description: buildDescription(entry),
-      weather: entry.details?.weather ?? '',
-      dateStart: new Date(entry.start_date),
-      dateEnd: entry.end_date ? new Date(entry.end_date) : undefined,
-      locationText,
-      locationChoice: match ? match.id : (locationText ? 'new' : 'none'),
-      include: true,
-      status: 'pending',
-    } satisfies ImportRow
+    const row = buildRow(entry)
+    if (importedIds.has(entry.id))
+      row.status = 'success'
+    return row
   })
+
+  const firstPending = rows.value.findIndex(r => r.status === 'pending')
+  currentIndex.value = firstPending === -1 ? 0 : firstPending
+
+  if (importedIds.size > 0) {
+    showAlert(`${importedIds.size} entr${importedIds.size === 1 ? 'y was' : 'ies were'} already imported previously — picking up where you left off`)
+  }
 }
 
 async function onFileChange() {
@@ -182,7 +227,6 @@ async function connectToTerrain() {
       return
     }
     await loadEntries(body.entries ?? [])
-    showAlert(`Fetched ${body.entries?.length ?? 0} entries from Terrain`)
   }
   catch {
     showAlert('Could not reach the server. Please try again.')
@@ -194,77 +238,155 @@ async function connectToTerrain() {
   }
 }
 
-function locationOptions(row: ImportRow) {
-  const options: { title: string, value: LocationChoice }[] = []
-  if (row.locationText)
-    options.push({ title: `+ Create new: "${row.locationText}"`, value: 'new' })
-  options.push({ title: 'No location', value: 'none' })
+function startOver() {
+  rows.value = []
+  currentIndex.value = 0
+}
+
+const locationOptions = computed(() => {
+  const options: { title: string, value: LocationChoice }[] = [
+    { title: '+ Create new location', value: 'new' },
+    { title: 'No location', value: 'none' },
+  ]
   for (const l of existingLocations.value)
     options.push({ title: l.name, value: l.id })
   return options
+})
+
+const currentRow = computed(() => rows.value[currentIndex.value] as ImportRow | undefined)
+const totalCount = computed(() => rows.value.length)
+const importedCount = computed(() => rows.value.filter(r => r.status === 'success').length)
+const skippedCount = computed(() => rows.value.filter(r => r.status === 'skipped').length)
+const remainingCount = computed(() => rows.value.filter(r => r.status === 'pending').length)
+const allDone = computed(() => rows.value.length > 0 && remainingCount.value === 0)
+const progressPercent = computed(() => totalCount.value === 0 ? 0 : ((importedCount.value + skippedCount.value) / totalCount.value) * 100)
+
+function goPrevious() {
+  if (currentIndex.value > 0)
+    currentIndex.value--
 }
 
-const includedCount = computed(() => rows.value.filter(r => r.include).length)
+function goNext() {
+  if (currentIndex.value < rows.value.length - 1)
+    currentIndex.value++
+}
 
-async function importRows() {
-  importing.value = true
-  // Reuse one newly-created location per distinct locationText, so 61 rows
-  // that mention the same place don't create 61 duplicate locations.
-  const createdByText = new Map<string, Location>()
-  let successCount = 0
-  let failureCount = 0
-
+// After a new location is created, re-check any still-pending rows that were
+// also proposing "create new" - if their text now matches the just-created
+// location, link them to it instead of creating a near-duplicate later.
+function rematchPendingRows() {
   for (const row of rows.value) {
-    if (!row.include)
+    if (row.status !== 'pending' || row.locationChoice !== 'new')
       continue
+    const match = findMatchingLocation(row.locationText)
+    if (match)
+      row.locationChoice = match.id
+  }
+}
 
-    try {
-      let location: Location | undefined
+const findAddressDisabled = computed(() => {
+  if (!currentRow.value || findingAddress.value)
+    return true
+  return currentRow.value.newLocationDraft.address.length === 0
+})
 
-      if (row.locationChoice === 'new') {
-        const key = normalize(row.locationText)
-        location = createdByText.get(key)
-        if (!location) {
-          location = await locationRepo.insert({
-            name: row.locationText.slice(0, 200) || row.name,
-            notes: '',
-            type: 'unknown',
-            user: user.value!,
-          })
-          createdByText.set(key, location)
-          existingLocations.value.push(location)
-        }
-      }
-      else if (row.locationChoice !== 'none') {
-        location = existingLocations.value.find(l => l.id === row.locationChoice)
-      }
+async function findDraftAddress() {
+  const row = currentRow.value
+  if (!row || findAddressDisabled.value)
+    return
 
-      await logRepo.insert({
-        name: row.name,
-        description: row.description,
-        weather: row.weather,
-        dateStart: row.dateStart,
-        dateEnd: row.dateEnd,
-        location,
-        user: user.value!,
-      })
-
-      row.status = 'success'
-      successCount++
+  findingAddress.value = true
+  try {
+    const resp = await fetch('/api/geocode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address: row.newLocationDraft.address }),
+    })
+    const result = await resp.json()
+    if (!resp.ok) {
+      showAlert(result.message ?? 'Failed to find address')
+      return
     }
-    catch (err) {
-      row.status = 'error'
-      row.error = err instanceof Error ? err.message : 'Failed to import'
-      failureCount++
-    }
+    row.newLocationDraft.latitude = result.latitude
+    row.newLocationDraft.longitude = result.longitude
+    row.newLocationDraft.city = result.info?.city ?? row.newLocationDraft.city
+    row.newLocationDraft.state = result.info?.state ?? row.newLocationDraft.state
+    row.newLocationDraft.country = result.info?.country ?? row.newLocationDraft.country
+  }
+  catch {
+    showAlert('Failed to find address')
+  }
+  finally {
+    findingAddress.value = false
+  }
+}
+
+async function resolveLocation(row: ImportRow): Promise<Location | undefined> {
+  if (row.locationChoice === 'none')
+    return undefined
+
+  if (row.locationChoice === 'new') {
+    const draft = row.newLocationDraft
+    const location = await locationRepo.insert({
+      name: draft.name.trim() || row.locationText || row.name,
+      nicknames: draft.nicknames.join(', '),
+      notes: '',
+      type: draft.type,
+      address: draft.address,
+      city: draft.city,
+      state: draft.state,
+      country: draft.country,
+      latitude: draft.latitude,
+      longitude: draft.longitude,
+      user: user.value!,
+    })
+    existingLocations.value.push(location)
+    rematchPendingRows()
+    return location
   }
 
-  importing.value = false
-  showAlert(
-    failureCount === 0
-      ? `Imported ${successCount} log${successCount === 1 ? '' : 's'}`
-      : `Imported ${successCount} log${successCount === 1 ? '' : 's'}, ${failureCount} failed`,
-  )
+  return existingLocations.value.find(l => l.id === row.locationChoice)
+}
+
+async function importCurrent() {
+  const row = currentRow.value
+  if (!row || row.status === 'success')
+    return
+
+  saving.value = true
+  try {
+    const location = await resolveLocation(row)
+    await logRepo.insert({
+      name: row.name,
+      description: row.description,
+      weather: row.weather,
+      dateStart: row.dateStart,
+      dateEnd: row.dateEnd,
+      location,
+      terrainId: row.raw.id,
+      user: user.value!,
+    })
+    row.status = 'success'
+    row.error = undefined
+    if (currentIndex.value < rows.value.length - 1)
+      goNext()
+  }
+  catch (err) {
+    row.status = 'error'
+    row.error = err instanceof Error ? err.message : 'Failed to import'
+  }
+  finally {
+    saving.value = false
+  }
+}
+
+function skipCurrent() {
+  const row = currentRow.value
+  if (!row)
+    return
+  row.status = 'skipped'
+  if (currentIndex.value < rows.value.length - 1)
+    goNext()
 }
 </script>
 
@@ -272,97 +394,218 @@ async function importRows() {
   <v-card flat>
     <v-card-text>
       <div class="d-flex flex-column ga-6">
-        <p>
-          Fetch entries straight from your Scouts Australia Terrain logbook, or upload a previously
-          exported JSON file. Review the location match for each entry below — you can link it to an
-          existing location, create a new one, or leave it unlinked — before importing.
-        </p>
-
-        <v-card variant="tonal">
-          <v-card-text>
-            <p class="mb-4">
-              Connect your Terrain account. Your password is sent directly to this server for a single
-              login and is never stored.
-            </p>
-            <v-form class="d-flex flex-column ga-4" @submit.prevent="connectToTerrain">
-              <v-select
-                v-model="branch" label="Branch" :items="BRANCHES" variant="solo-filled" hide-details
-              />
-              <v-text-field
-                :model-value="memberNumber" label="Member Number" variant="solo-filled" hide-details
-                inputmode="numeric" pattern="[0-9]*" @update:model-value="onMemberNumberInput"
-              />
-              <v-text-field
-                v-model="password" label="Password" :type="showPassword ? 'text' : 'password'"
-                variant="solo-filled" hide-details autocomplete="off"
-                :append-inner-icon="showPassword ? mdiEyeOff : mdiEye"
-                @click:append-inner="showPassword = !showPassword"
-              />
-              <v-btn type="submit" color="primary" :loading="connecting" :disabled="connecting">
-                Connect &amp; Fetch Logbook
-              </v-btn>
-            </v-form>
-          </v-card-text>
-        </v-card>
-
-        <v-divider>or</v-divider>
-
-        <v-file-input
-          v-model="file" hide-details label="Terrain export JSON" accept=".json" variant="solo-filled"
-          :prepend-inner-icon="mdiFileUploadOutline" prepend-icon="" :loading="loadingLocations"
-          @update:model-value="onFileChange"
-        />
-
-        <div v-if="rows.length">
+        <template v-if="rows.length === 0">
           <p>
-            {{ includedCount }} of {{ rows.length }} entries will be imported.
+            Fetch entries straight from your Scouts Australia Terrain logbook, or upload a previously
+            exported JSON file. You'll then step through each entry one at a time, with the option to
+            link it to an existing location or create a new one, before importing it. You can stop at
+            any point — anything already imported stays imported, and picking up the same account or
+            file again later skips straight to what's left.
           </p>
 
-          <v-table density="compact">
-            <thead>
-              <tr>
-                <th />
-                <th>Name</th>
-                <th>Start Date</th>
-                <th>Weather</th>
-                <th>Location</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(row, index) in rows" :key="row.raw.id ?? index">
-                <td>
-                  <v-checkbox v-model="row.include" hide-details density="compact" />
-                </td>
-                <td>{{ row.name }}</td>
-                <td>{{ row.dateStart.toLocaleDateString() }}</td>
-                <td>{{ row.weather }}</td>
-                <td style="min-width: 260px;">
-                  <v-autocomplete
-                    v-model="row.locationChoice"
-                    :items="locationOptions(row)"
-                    :prepend-inner-icon="mdiMapMarker"
-                    density="compact"
-                    variant="solo-filled"
-                    hide-details
-                  />
-                </td>
-                <td>
-                  <span v-if="row.status === 'success'" class="text-success">Imported</span>
-                  <span v-else-if="row.status === 'error'" class="text-error">{{ row.error }}</span>
-                  <span v-else class="text-medium-emphasis">Pending</span>
-                </td>
-              </tr>
-            </tbody>
-          </v-table>
-        </div>
+          <v-card variant="tonal">
+            <v-card-text>
+              <p class="mb-4">
+                Connect your Terrain account. Your password is sent directly to this server for a single
+                login and is never stored.
+              </p>
+              <v-form class="d-flex flex-column ga-4" @submit.prevent="connectToTerrain">
+                <v-select
+                  v-model="branch" label="Branch" :items="BRANCHES" variant="solo-filled" hide-details
+                />
+                <v-text-field
+                  :model-value="memberNumber" label="Member Number" variant="solo-filled" hide-details
+                  inputmode="numeric" pattern="[0-9]*" @update:model-value="onMemberNumberInput"
+                />
+                <v-text-field
+                  v-model="password" label="Password" :type="showPassword ? 'text' : 'password'"
+                  variant="solo-filled" hide-details autocomplete="off"
+                  :append-inner-icon="showPassword ? mdiEyeOff : mdiEye"
+                  @click:append-inner="showPassword = !showPassword"
+                />
+                <v-btn type="submit" color="primary" :loading="connecting" :disabled="connecting">
+                  Connect &amp; Fetch Logbook
+                </v-btn>
+              </v-form>
+            </v-card-text>
+          </v-card>
 
-        <v-btn
-          color="primary" :disabled="includedCount === 0" :loading="importing"
-          @click="importRows"
-        >
-          Import {{ includedCount }} Log{{ includedCount === 1 ? '' : 's' }}
-        </v-btn>
+          <v-divider>or</v-divider>
+
+          <v-file-input
+            v-model="file" hide-details label="Terrain export JSON" accept=".json" variant="solo-filled"
+            :prepend-inner-icon="mdiFileUploadOutline" prepend-icon="" :loading="loadingEntries"
+            @update:model-value="onFileChange"
+          />
+        </template>
+
+        <template v-else>
+          <div class="d-flex align-center justify-space-between ga-4">
+            <div class="text-body-2">
+              <strong>{{ importedCount }}</strong> imported ·
+              <strong>{{ skippedCount }}</strong> skipped ·
+              <strong>{{ remainingCount }}</strong> remaining of {{ totalCount }}
+            </div>
+            <v-btn variant="text" size="small" @click="startOver">
+              Start Over
+            </v-btn>
+          </div>
+          <v-progress-linear :model-value="progressPercent" color="primary" height="6" rounded />
+
+          <v-alert v-if="allDone" type="success" variant="tonal">
+            All entries reviewed — {{ importedCount }} imported, {{ skippedCount }} skipped.
+          </v-alert>
+          <v-btn v-if="allDone" color="primary" :to="{ name: 'logs' }">
+            View Logs
+          </v-btn>
+
+          <template v-else-if="currentRow">
+            <v-card variant="tonal">
+              <v-card-text class="d-flex flex-column ga-4">
+                <div class="d-flex align-center justify-space-between">
+                  <span class="text-medium-emphasis">Entry {{ currentIndex + 1 }} of {{ totalCount }}</span>
+                  <v-chip v-if="currentRow.status === 'success'" color="success" size="small">
+                    Imported
+                  </v-chip>
+                  <v-chip v-else-if="currentRow.status === 'skipped'" color="warning" size="small">
+                    Skipped
+                  </v-chip>
+                  <v-chip v-else-if="currentRow.status === 'error'" color="error" size="small">
+                    {{ currentRow.error }}
+                  </v-chip>
+                </div>
+
+                <v-text-field
+                  v-model="currentRow.name" label="Name" variant="solo-filled" hide-details
+                  :readonly="currentRow.status === 'success'"
+                />
+
+                <div class="d-flex ga-2 flex-wrap">
+                  <v-chip v-if="currentRow.raw.achievement_meta?.stream" size="small" variant="outlined">
+                    {{ currentRow.raw.achievement_meta.stream }}<template
+                      v-if="currentRow.raw.achievement_meta.branch && currentRow.raw.achievement_meta.branch !== currentRow.raw.achievement_meta.stream"
+                    >
+                      / {{ currentRow.raw.achievement_meta.branch }}
+                    </template>
+                  </v-chip>
+                  <v-chip v-if="currentRow.raw.details?.your_role" size="small" variant="outlined">
+                    Role: {{ currentRow.raw.details.your_role }}
+                  </v-chip>
+                  <v-chip v-if="currentRow.raw.details?.who_lead" size="small" variant="outlined">
+                    Led by: {{ currentRow.raw.details.who_lead }}
+                  </v-chip>
+                  <v-chip v-if="currentRow.raw.distance_travelled" size="small" variant="outlined">
+                    {{ currentRow.raw.distance_travelled }}m travelled
+                  </v-chip>
+                </div>
+
+                <div class="d-flex ga-4 flex-wrap">
+                  <DatePicker v-model="currentRow.dateStart" label="Start Date" />
+                  <DatePicker v-if="currentRow.dateEnd" v-model="currentRow.dateEnd" label="End Date" />
+                </div>
+
+                <v-text-field
+                  v-model="currentRow.weather" label="Weather" variant="solo-filled" hide-details
+                  :readonly="currentRow.status === 'success'"
+                />
+
+                <v-textarea
+                  v-model="currentRow.description" label="Description" variant="solo-filled" hide-details
+                  rows="4" :readonly="currentRow.status === 'success'"
+                />
+
+                <div
+                  v-if="currentRow.raw.details?.other_participants || currentRow.raw.details?.purpose || currentRow.raw.details?.verifier?.name"
+                  class="text-body-2 text-medium-emphasis"
+                >
+                  <div v-if="currentRow.raw.details?.purpose">
+                    Purpose: {{ currentRow.raw.details.purpose }}
+                  </div>
+                  <div v-if="currentRow.raw.details?.other_participants">
+                    Other participants: {{ currentRow.raw.details.other_participants }}
+                  </div>
+                  <div v-if="currentRow.raw.details?.verifier?.name">
+                    Verifier: {{ currentRow.raw.details.verifier.name }}<template
+                      v-if="currentRow.raw.details.verifier.contact"
+                    >
+                      ({{ currentRow.raw.details.verifier.contact }})
+                    </template>
+                  </div>
+                </div>
+
+                <v-divider />
+
+                <v-autocomplete
+                  v-model="currentRow.locationChoice"
+                  :items="locationOptions"
+                  label="Location"
+                  :prepend-inner-icon="mdiMapMarker"
+                  variant="solo-filled"
+                  hide-details
+                  :disabled="currentRow.status === 'success'"
+                />
+                <p v-if="currentRow.locationText" class="text-caption text-medium-emphasis">
+                  Terrain says: "{{ currentRow.locationText }}"
+                </p>
+
+                <v-card v-if="currentRow.locationChoice === 'new' && currentRow.status !== 'success'" variant="outlined">
+                  <v-card-text class="d-flex flex-column ga-4">
+                    <p class="text-subtitle-2 mb-0">
+                      New Location
+                    </p>
+                    <v-text-field
+                      v-model="currentRow.newLocationDraft.name" label="Name" variant="solo-filled" hide-details
+                    />
+                    <v-combobox
+                      v-model="currentRow.newLocationDraft.nicknames" label="Nicknames" multiple chips
+                      closable-chips variant="solo-filled" hide-details
+                    />
+                    <v-select
+                      v-model="currentRow.newLocationDraft.type" label="Type" :items="campTypesText"
+                      variant="solo-filled" hide-details
+                    />
+                    <div class="d-flex align-center ga-4">
+                      <v-text-field
+                        v-model="currentRow.newLocationDraft.address" label="Address" variant="solo-filled"
+                        hide-details
+                      />
+                      <v-btn
+                        color="primary" :loading="findingAddress" :disabled="findAddressDisabled"
+                        @click="findDraftAddress"
+                      >
+                        Find
+                      </v-btn>
+                    </div>
+                    <div v-if="currentRow.newLocationDraft.latitude" class="text-caption text-medium-emphasis">
+                      {{ currentRow.newLocationDraft.city }}, {{ currentRow.newLocationDraft.state }},
+                      {{ currentRow.newLocationDraft.country }}
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-card-text>
+            </v-card>
+
+            <div class="d-flex ga-4 align-center justify-space-between flex-wrap">
+              <v-btn variant="tonal" :disabled="currentIndex === 0" :prepend-icon="mdiChevronLeft" @click="goPrevious">
+                Previous
+              </v-btn>
+              <div class="d-flex ga-4">
+                <v-btn v-if="currentRow.status !== 'success'" variant="text" :append-icon="mdiSkipNext" @click="skipCurrent">
+                  Skip
+                </v-btn>
+                <v-btn
+                  v-if="currentRow.status === 'success'" color="primary" :append-icon="mdiChevronRight"
+                  :disabled="currentIndex === rows.length - 1" @click="goNext"
+                >
+                  Next
+                </v-btn>
+                <v-btn v-else color="primary" :loading="saving" @click="importCurrent">
+                  Import &amp; Next
+                </v-btn>
+              </div>
+            </div>
+          </template>
+        </template>
       </div>
     </v-card-text>
   </v-card>
