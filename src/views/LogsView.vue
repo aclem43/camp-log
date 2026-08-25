@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { remult } from 'remult'
 import { computed, onMounted, ref, watch } from 'vue'
-import { mdiCloseCircle, mdiDelete, mdiEye, mdiSync } from '@mdi/js'
+import { mdiCloseCircle, mdiDelete, mdiEye, mdiMagnify, mdiSync } from '@mdi/js'
 import { Log } from '@/shared/models/Log'
 import { getUser } from '@/scripts/user'
 import { askConfirm } from '@/scripts/confirm'
@@ -21,15 +21,27 @@ interface PendingLogRow {
   dateEnd?: Date
 }
 type LogRow = (Log & { pending?: undefined }) | PendingLogRow
+type SortOrder = 'dateDesc' | 'dateAsc' | 'name'
+
+const itemsPerPage = 5
+
+const sortOptions: { title: string, value: SortOrder }[] = [
+  { title: 'Newest first', value: 'dateDesc' },
+  { title: 'Oldest first', value: 'dateAsc' },
+  { title: 'Name (A-Z)', value: 'name' },
+]
 
 const logs = ref<Log[]>([])
+const page = ref(1)
+const search = ref('')
+const sortOrder = ref<SortOrder>('dateDesc')
 
 const logRepo = remult.repo(Log)
 
 const user = getUser()
 
 async function load() {
-  logs.value = await logRepo.find({where: { user: user.value! }, include: { location: true } })
+  logs.value = await logRepo.find({ where: { user: user.value! }, include: { location: true } })
 }
 
 async function deleteLog(log: Log) {
@@ -54,7 +66,37 @@ const pendingLogRows = computed<PendingLogRow[]>(() => pendingItems.value
     dateStart: item.payload.dateStart as Date | undefined,
   })))
 
-const rows = computed<LogRow[]>(() => [...pendingLogRows.value, ...logs.value])
+const allRows = computed<LogRow[]>(() => [...pendingLogRows.value, ...logs.value])
+
+const filteredRows = computed(() => {
+  const query = search.value.trim().toLowerCase()
+  const matching = query
+    ? allRows.value.filter(row =>
+        row.name.toLowerCase().includes(query)
+        || row.description.toLowerCase().includes(query)
+        || (!row.pending && !!row.location?.name.toLowerCase().includes(query)),
+      )
+    : allRows.value
+
+  return [...matching].sort((a, b) => {
+    if (sortOrder.value === 'name')
+      return a.name.localeCompare(b.name)
+    const diff = (a.dateStart?.getTime() ?? 0) - (b.dateStart?.getTime() ?? 0)
+    return sortOrder.value === 'dateAsc' ? diff : -diff
+  })
+})
+
+const pageCount = computed(() => Math.max(1, Math.ceil(filteredRows.value.length / itemsPerPage)))
+const pagedRows = computed(() => filteredRows.value.slice((page.value - 1) * itemsPerPage, page.value * itemsPerPage))
+
+watch([search, sortOrder], () => {
+  page.value = 1
+})
+
+watch(pageCount, (count) => {
+  if (page.value > count)
+    page.value = count
+})
 
 async function discardPending(id: string) {
   const confirmed = await askConfirm('Discard this unsynced log? It will be lost.', { confirmText: 'Discard' })
@@ -76,74 +118,96 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
 <template>
   <v-container>
     <v-col>
-      <v-card>
-        <v-card-title>
+      <div class="d-flex flex-column ga-4">
+        <h1 class="text-h5">
           Logs
-        </v-card-title>
-        <v-card-text>
-          <v-data-table
+        </h1>
+
+        <div class="d-flex flex-wrap ga-4">
+          <v-text-field
+            v-model="search"
+            label="Filter"
+            placeholder="Search name, description, or location"
+            variant="solo-filled"
             density="compact"
-            :headers="[
-              { title: 'Name', value: 'name', sortable: true },
-              { title: 'Description', value: 'description', sortable: true, width: '200px' },
-              { title: 'Location', value: 'location', sortable: true },
-              { title: 'Start Date', value: 'dateStart', sortable: true },
-              { title: 'Actions', value: 'actions', sortable: false, width: '90px' },
-            ]"
-            :items="rows"
-            :items-per-page="5"
-            :sort-by="[{ key: 'dateStart', order: 'desc' }]"
-          >
-            <template #[`item.name`]="{ item }">
-              {{ item.name }}
-              <v-chip
-                v-if="item.pending && item.pendingStatus === 'pending'"
-                size="small" color="info" variant="tonal" class="ml-2"
+            hide-details
+            clearable
+            :prepend-inner-icon="mdiMagnify"
+            style="min-width: 240px; flex: 2 1 240px;"
+          />
+          <v-select
+            v-model="sortOrder"
+            label="Sort by"
+            variant="solo-filled"
+            density="compact"
+            hide-details
+            :items="sortOptions"
+            style="min-width: 180px; flex: 1 1 180px;"
+          />
+        </div>
+
+        <v-alert v-if="!allRows.length" type="info" variant="tonal">
+          No logs yet.
+        </v-alert>
+        <v-alert v-else-if="!filteredRows.length" type="info" variant="tonal">
+          No logs match your filter.
+        </v-alert>
+
+        <v-card v-for="item in pagedRows" :key="item.pending ? item.pendingId : item.id">
+          <v-card-title class="d-flex align-center flex-wrap ga-2">
+            {{ item.name }}
+            <v-chip
+              v-if="item.pending && item.pendingStatus === 'pending'"
+              size="small" color="info" variant="tonal"
+            >
+              Pending sync
+            </v-chip>
+            <v-chip
+              v-else-if="item.pending && item.pendingStatus === 'failed'"
+              size="small" color="error" variant="tonal"
+              :title="item.pendingError"
+            >
+              Sync failed
+            </v-chip>
+            <v-spacer />
+            <div v-if="item.pending" class="d-flex ga-2">
+              <v-btn
+                v-if="item.pendingStatus === 'failed'"
+                density="compact" color="primary" title="Retry sync"
+                @click="retryPending(item.pendingId); syncOutbox()"
               >
-                Pending sync
-              </v-chip>
-              <v-chip
-                v-else-if="item.pending && item.pendingStatus === 'failed'"
-                size="small" color="error" variant="tonal" class="ml-2"
-                :title="item.pendingError"
-              >
-                Sync failed
-              </v-chip>
+                <v-icon :icon="mdiSync" />
+              </v-btn>
+              <v-btn density="compact" color="error" title="Discard" @click="discardPending(item.pendingId)">
+                <v-icon :icon="mdiCloseCircle" />
+              </v-btn>
+            </div>
+            <div v-else class="d-flex ga-2">
+              <v-btn density="compact" color="primary" title="View" :to="`/log/${item.id}`">
+                <v-icon :icon="mdiEye" />
+              </v-btn>
+              <v-btn density="compact" color="error" title="Delete" @click="deleteLog(item)">
+                <v-icon :icon="mdiDelete" />
+              </v-btn>
+            </div>
+          </v-card-title>
+          <v-card-subtitle>
+            {{ item.dateStart?.toLocaleDateString() }}<template v-if="item.dateEnd">
+              to {{ item.dateEnd.toLocaleDateString() }}
             </template>
-            <template #[`item.location`]="{ item }">
-              {{ item.pending ? '—' : item.location?.name }}
+            <template v-if="!item.pending && item.location">
+              · <router-link :to="{ name: 'map', query: { location: item.location.id } }" class="text-primary">
+                {{ item.location.name }}
+              </router-link>
             </template>
-            <template #[`item.dateStart`]="{ item }">
-              {{ item.dateStart?.toLocaleDateString() }}
-            </template>
-            <template #[`item.dateEnd`]="{ item }">
-              {{ item.dateEnd?.toLocaleDateString() }}
-            </template>
-            <template #[`item.actions`]="{ item }">
-              <div v-if="item.pending" class="d-flex ga-2 align-center justify-center">
-                <v-btn
-                  v-if="item.pendingStatus === 'failed'"
-                  density="compact" color="primary" :title="'Retry sync'"
-                  @click="retryPending(item.pendingId); syncOutbox()"
-                >
-                  <v-icon :icon="mdiSync" />
-                </v-btn>
-                <v-btn density="compact" color="error" title="Discard" @click="discardPending(item.pendingId)">
-                  <v-icon :icon="mdiCloseCircle" />
-                </v-btn>
-              </div>
-              <div v-else class="d-flex ga-2 align-center justify-center">
-                <v-btn density="compact" color="primary" :to="`/log/${item.id}`">
-                  <v-icon :icon="mdiEye" />
-                </v-btn>
-                <v-btn density="compact" color="error" @click="deleteLog(item)">
-                  <v-icon :icon="mdiDelete" />
-                </v-btn>
-              </div>
-            </template>
-          </v-data-table>
-        </v-card-text>
-      </v-card>
+          </v-card-subtitle>
+          <v-card-text v-if="item.description" style="white-space: pre-wrap;">
+            {{ item.description }}
+          </v-card-text>
+        </v-card>
+
+        <v-pagination v-if="pageCount > 1" v-model="page" :length="pageCount" />
+      </div>
     </v-col>
   </v-container>
 </template>
