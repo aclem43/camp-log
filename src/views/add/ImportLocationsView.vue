@@ -97,62 +97,54 @@ async function importRows() {
 </script>
 
 <template>
-  <v-container>
-    <v-col>
-      <v-card>
-        <v-card-title>
-          Import Locations
-        </v-card-title>
+  <v-card flat>
+    <v-card-text>
+      <div class="d-flex flex-column ga-6">
+        <p>
+          Import a CSV exported from Google My Maps (columns: <code>WKT</code>, <code>name</code>, <code>description</code>).
+          Imported locations are given the type "Unknown" — you can edit them individually afterwards.
+        </p>
 
-        <v-card-text>
-          <div class="d-flex flex-column ga-6">
-            <p>
-              Import a CSV exported from Google My Maps (columns: <code>WKT</code>, <code>name</code>, <code>description</code>).
-              Imported locations are given the type "Unknown" — you can edit them individually afterwards.
-            </p>
+        <v-file-input
+          v-model="file" hide-details label="CSV file" accept=".csv" variant="solo-filled"
+          :prepend-inner-icon="mdiFileUploadOutline" prepend-icon="" @update:model-value="onFileChange"
+        />
 
-            <v-file-input
-              v-model="file" hide-details label="CSV file" accept=".csv" variant="solo-filled"
-              :prepend-inner-icon="mdiFileUploadOutline" prepend-icon="" @update:model-value="onFileChange"
-            />
+        <div v-if="rows.length">
+          <p>
+            {{ validRows().length }} of {{ rows.length }} rows ready to import.
+          </p>
 
-            <div v-if="rows.length">
-              <p>
-                {{ validRows().length }} of {{ rows.length }} rows ready to import.
-              </p>
+          <v-table density="compact">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Latitude</th>
+                <th>Longitude</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, index) in rows" :key="index">
+                <td>{{ row.name }}</td>
+                <td>{{ row.latitude }}</td>
+                <td>{{ row.longitude }}</td>
+                <td>
+                  <span v-if="row.error" class="text-error">{{ row.error }}</span>
+                  <span v-else class="text-success">OK</span>
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+        </div>
 
-              <v-table density="compact">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Latitude</th>
-                    <th>Longitude</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(row, index) in rows" :key="index">
-                    <td>{{ row.name }}</td>
-                    <td>{{ row.latitude }}</td>
-                    <td>{{ row.longitude }}</td>
-                    <td>
-                      <span v-if="row.error" class="text-error">{{ row.error }}</span>
-                      <span v-else class="text-success">OK</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </v-table>
-            </div>
-
-            <v-btn
-              color="primary" :disabled="validRows().length === 0" :loading="importing"
-              @click="importRows"
-            >
-              Import {{ validRows().length }} Location{{ validRows().length === 1 ? '' : 's' }}
-            </v-btn>
-          </div>
-        </v-card-text>
-      </v-card>
-    </v-col>
-  </v-container>
+        <v-btn
+          color="primary" :disabled="validRows().length === 0" :loading="importing"
+          @click="importRows"
+        >
+          Import {{ validRows().length }} Location{{ validRows().length === 1 ? '' : 's' }}
+        </v-btn>
+      </div>
+    </v-card-text>
+  </v-card>
 </template>

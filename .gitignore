@@ -37,3 +37,7 @@ coverage
 *.tsbuildinfo
 .env
 truenas-compose.yaml
+
+# Terrain logbook import tooling — personal data / browser session, never commit
+/scripts/terrain-import/output/
+/scripts/terrain-import/.browser-profile/

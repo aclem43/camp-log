@@ -14,7 +14,7 @@ import { logOut } from '@/scripts/user'
         </template>
         <v-list-item title="Log" :prepend-icon="mdiArchive" :to="{ name: 'addLog' }" />
         <v-list-item :prepend-icon="mdiMapMarker" title="Location" :to="{ name: 'addLocation' }" />
-        <v-list-item :prepend-icon="mdiFileUploadOutline" title="Import" :to="{ name: 'importLocations' }" />
+        <v-list-item :prepend-icon="mdiFileUploadOutline" title="Import" :to="{ name: 'import' }" />
       </v-list-group>
 
       <v-list-item :prepend-icon="mdiMap" title="Map" :to="{ name: 'map' }" />
