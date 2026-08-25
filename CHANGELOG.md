@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.5 (2026-08-25)
+
+### Bug Fixes
+
+* Fixed the app version not showing on the Settings page.
+
 ## 1.0.4 (2026-08-25)
 
 ## 1.0.3 (2026-08-25)
