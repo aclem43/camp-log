@@ -21,6 +21,14 @@ const findingAddress = ref(false)
 
 const campTypesText = campTypes.map(t => ({ title: campTypesToText(t as campTypesType), value: t }))
 
+const nicknamesArray = computed<string[]>({
+  get: () => location.value?.nicknames.split(',').map(n => n.trim()).filter(Boolean) ?? [],
+  set: (value) => {
+    if (location.value)
+      location.value.nicknames = value.join(', ')
+  },
+})
+
 onMounted(async () => {
   location.value = (await locationRepo.findOne({ where: { id: props.id, user: user.value! } })) ?? null
   loading.value = false
@@ -129,6 +137,10 @@ async function deleteLocation() {
         <v-card-text>
           <div class="d-flex flex-column ga-6">
             <v-text-field v-model="location.name" hide-details label="Name" required variant="solo-filled" />
+            <v-combobox
+              v-model="nicknamesArray" hide-details label="Nicknames" multiple chips closable-chips
+              variant="solo-filled" hint="Alternate names to help you find this place later" persistent-hint
+            />
             <v-textarea v-model="location.notes" hide-details label="Notes" required variant="solo-filled" />
             <v-select
               v-model="location.type" hide-details label="Type" required :items="campTypesText"
