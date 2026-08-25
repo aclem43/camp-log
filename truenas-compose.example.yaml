@@ -26,7 +26,7 @@ services:
       POSTGRES_PASSWORD: CHANGE_ME
       POSTGRES_DB: camp-log
     volumes:
-      - /mnt/CHANGE_ME/apps/camp-log/pgdata:/var/lib/postgresql/data
+      - /mnt/CHANGE_ME/pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
