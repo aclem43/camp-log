@@ -8,6 +8,7 @@ import { Activity } from '../../shared/models/Activity'
 import { Location } from '../../shared/models/Location'
 import { ActivityTemplate } from '../../shared/models/ActivityTemplate'
 import { Log } from '../../shared/models/Log'
+import { Photo } from '../../shared/models/Photo'
 import { Account } from '../../shared/models/auth/Account'
 import { Session } from '../../shared/models/auth/Session'
 import { User } from '../../shared/models/auth/User'
@@ -21,6 +22,7 @@ export const api = remultExpress(
       ActivityTemplate,
       Location,
       Log,
+      Photo,
       User,
       Session,
       Account,

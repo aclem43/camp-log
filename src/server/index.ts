@@ -10,6 +10,8 @@ import { auth } from './auth'
 import { isDev, isProd, proc } from './config'
 import GeocodeRoutes from './routes/geocode'
 import AccountRoutes from './routes/account'
+import TerrainImportRoutes from './routes/terrainImport'
+import PhotoRoutes from './routes/photos'
 
 const app = express()
 const port = Number.parseInt(proc.env.PORT as string ?? 3000)
@@ -23,6 +25,8 @@ app.use(api)
 app.use(api.withRemult)
 app.use('/api/', GeocodeRoutes)
 app.use('/api/', AccountRoutes)
+app.use('/api/', TerrainImportRoutes)
+app.use('/api/', PhotoRoutes)
 
 const frontendFiles = `${process.cwd()}/dist`
 

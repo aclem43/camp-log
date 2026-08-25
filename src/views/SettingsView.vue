@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { remult } from 'remult'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import changelogRaw from '../../CHANGELOG.md?raw'
 import type { UnitPreference } from '@/shared/models/auth/User'
 import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
 import { showAlert } from '@/scripts/alert'
@@ -23,6 +24,44 @@ async function loadActivities() {
 }
 
 const version = ref('Loading')
+const showChangelog = ref(false)
+
+interface ChangelogSection { title: string, items: string[] }
+interface ChangelogRelease { version: string, date: string, sections: ChangelogSection[] }
+
+const changelog = computed<ChangelogRelease[]>(() => {
+  const releases: ChangelogRelease[] = []
+  let currentSection: ChangelogSection | null = null
+
+  for (const line of changelogRaw.split('\n')) {
+    const releaseMatch = line.match(/^## (.+?) \((.+?)\)/)
+    const sectionMatch = line.match(/^### (.+)/)
+    const itemMatch = line.match(/^\* (.+)/)
+
+    if (releaseMatch) {
+      currentSection = null
+      releases.push({ version: releaseMatch[1], date: releaseMatch[2], sections: [] })
+    }
+    else if (sectionMatch && releases.length > 0) {
+      currentSection = { title: sectionMatch[1], items: [] }
+      releases[releases.length - 1].sections.push(currentSection)
+    }
+    else if (itemMatch && currentSection) {
+      currentSection.items.push(itemMatch[1])
+    }
+  }
+
+  return releases
+})
+
+const sectionColors: Record<string, string> = {
+  'Features': 'text-primary',
+  'Bug Fixes': 'text-warning',
+  'Security': 'text-error',
+}
+function sectionColor(title: string) {
+  return sectionColors[title] ?? 'text-medium-emphasis'
+}
 
 onMounted(async () => {
   loadActivities()
@@ -150,7 +189,12 @@ async function importData() {
               <v-expansion-panel>
                 <v-expansion-panel-title> Info </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  Version: {{ version }}
+                  <div class="d-flex align-center ga-4">
+                    <span>Version: {{ version }}</span>
+                    <v-btn size="small" variant="text" color="primary" @click="showChangelog = true">
+                      View Changelog
+                    </v-btn>
+                  </div>
                 </v-expansion-panel-text>
               </v-expansion-panel>
               <v-expansion-panel>
@@ -261,5 +305,53 @@ async function importData() {
         </v-card>
       </v-col>
     </v-row>
+
+    <v-dialog v-model="showChangelog" max-width="600" scrollable>
+      <v-card>
+        <v-card-title>Changelog</v-card-title>
+        <v-card-text class="pt-1">
+          <template v-for="(release, index) in changelog" :key="release.version">
+            <v-divider v-if="index > 0" class="my-4" />
+
+            <div v-if="release.sections.length === 0" class="d-flex align-baseline flex-wrap ga-2">
+              <span class="text-subtitle-2 font-weight-bold">{{ release.version }}</span>
+              <span class="text-caption text-medium-emphasis">{{ release.date }} · No notable changes</span>
+            </div>
+            <div v-else>
+              <div class="d-flex align-baseline ga-2 mb-3">
+                <span class="text-subtitle-1 font-weight-bold">{{ release.version }}</span>
+                <span class="text-caption text-medium-emphasis">{{ release.date }}</span>
+              </div>
+              <div v-for="(section, sIndex) in release.sections" :key="section.title" :class="sIndex > 0 ? 'mt-3' : ''">
+                <div class="text-caption text-uppercase font-weight-bold mb-1" :class="sectionColor(section.title)">
+                  {{ section.title }}
+                </div>
+                <ul class="changelog-list">
+                  <li v-for="item in section.items" :key="item">
+                    {{ item }}
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </template>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showChangelog = false">
+            Close
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
+
+<style scoped>
+.changelog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 1.25em;
+}
+</style>

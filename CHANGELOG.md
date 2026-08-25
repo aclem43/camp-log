@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.1.0 (2026-08-25)
+
+### Features
+
+* Added the ability to import your Scouts Australia Terrain logbook: connect your Terrain account directly (or upload an exported file), review and match each entry to a location one at a time, and pick up where you left off if you stop partway through.
+* Added the ability to upload photos to your logs and locations, with a full-size view when you click one.
+* Locations can now have nicknames (alternate names), which are used everywhere you search for or link to a location.
+* Added a "Non-Campground" location type for places like day activities, plus a map filter to show only campgrounds.
+* Added a changelog viewer to Settings so you can see what's changed in each version.
+* Clicking a location in search results now opens the map centered on it, instead of going straight to the edit page.
+* The log list now has a filter box and sort order (newest, oldest, or name), and shows full descriptions instead of truncating them.
+* Simplified the mobile bottom navigation (History and Stats are still available from Home).
+
+### Performance
+
+* The map no longer reloads from scratch every time you navigate back to it.
+
+### Bug Fixes
+
+* Fixed the log detail page crashing if an activity's type had been deleted.
+* Fixed the log detail page loading forever if the request failed (e.g. due to an ad blocker) — it now shows an error with a retry option.
+
 ## 1.0.5 (2026-08-25)
 
 ### Bug Fixes

@@ -20,7 +20,11 @@ const loggedIn = getLoggedIn()
   <v-app :theme="darkTheme ? 'dark' : ''">
     <v-main>
       <OnlineStatusBanner />
-      <RouterView />
+      <RouterView v-slot="{ Component }">
+        <KeepAlive include="MapView">
+          <component :is="Component" />
+        </KeepAlive>
+      </RouterView>
     </v-main>
     <BottomBar v-if="mobile && loggedIn" />
     <NavBar v-else-if="loggedIn" />

@@ -3,36 +3,59 @@ import { mdiTent } from '@mdi/js'
 
 import 'leaflet/dist/leaflet.css'
 import { LControlLayers, LIcon, LLayerGroup, LMap, LMarker, LPopup, LTileLayer } from '@maxel01/vue-leaflet'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onActivated, ref } from 'vue'
 import { remult } from 'remult'
+import { useRoute } from 'vue-router'
 import { getUser } from '@/scripts/user'
 import { Location, campTypes, campTypesToColor, campTypesToText, type campTypesType } from '@/shared/models/Location'
 import { Log } from '@/shared/models/Log'
 
+defineOptions({ name: 'MapView' })
+
+const route = useRoute()
+
 const zoom = ref(6)
 const center = ref<[number, number]>([47.41322, -1.219482])
+const focusedLocationId = ref<number | null>(null)
 
 const locations = ref<Location[]>([])
 const locationIdsWithLogs = ref<Set<number>>(new Set())
 const onlyWithLogs = ref(false)
+const onlyCampgrounds = ref(false)
 const locationRepo = remult.repo(Location)
 const logRepo = remult.repo(Log)
 const user = getUser()
 
 const visibleLocations = computed(() => {
-  if (!onlyWithLogs.value)
-    return locations.value
-  return locations.value.filter(l => locationIdsWithLogs.value.has(l.id))
+  let result = locations.value
+  if (onlyWithLogs.value)
+    result = result.filter(l => locationIdsWithLogs.value.has(l.id))
+  if (onlyCampgrounds.value)
+    result = result.filter(l => l.type !== 'nonCampground')
+  return result
 })
 
-onMounted(async () => {
+onActivated(async () => {
   const [locs, logs] = await Promise.all([
     locationRepo.find({ where: { user: user.value! } }),
     logRepo.find({ where: { user: user.value! }, include: { location: true } }),
   ])
   locations.value = locs.filter(l => l.latitude !== 0 && l.longitude !== 0)
   locationIdsWithLogs.value = new Set(logs.filter(log => log.location).map(log => log.location!.id))
-  center.value = [locations.value[0].latitude!, locations.value[0].longitude!]
+
+  const focusId = Number(route.query.location)
+  const focusedLocation = Number.isFinite(focusId) ? locations.value.find(l => l.id === focusId) : undefined
+  if (focusedLocation) {
+    onlyWithLogs.value = false
+    onlyCampgrounds.value = false
+    focusedLocationId.value = focusedLocation.id
+    center.value = [focusedLocation.latitude!, focusedLocation.longitude!]
+    zoom.value = 15
+  }
+  else {
+    focusedLocationId.value = null
+    center.value = [locations.value[0].latitude!, locations.value[0].longitude!]
+  }
 })
 </script>
 
@@ -43,7 +66,11 @@ onMounted(async () => {
       <LLayerGroup name="Locations" layer-type="overlay">
         <LMarker v-for="loc in visibleLocations" :key="loc.id" :lat-lng="[loc.latitude, loc.longitude]" :title="loc.name">
           <LIcon class-name="location-marker-icon" :icon-size="[30, 30]" :icon-anchor="[15, 15]" :popup-anchor="[0, -15]">
-            <div class="location-pin" :style="{ backgroundColor: campTypesToColor(loc.type) }">
+            <div
+              class="location-pin"
+              :class="{ 'location-pin-focused': loc.id === focusedLocationId }"
+              :style="{ backgroundColor: campTypesToColor(loc.type) }"
+            >
               <svg viewBox="0 0 24 24"><path :d="mdiTent" /></svg>
             </div>
           </LIcon>
@@ -61,7 +88,15 @@ onMounted(async () => {
     <div class="map-legend">
       <v-switch
         v-model="onlyWithLogs"
-        label="Only show campsites with logs"
+        label="Only show locations with logs"
+        color="primary"
+        density="compact"
+        hide-details
+        class="map-legend-filter"
+      />
+      <v-switch
+        v-model="onlyCampgrounds"
+        label="Only show campgrounds"
         color="primary"
         density="compact"
         hide-details
@@ -107,6 +142,11 @@ onMounted(async () => {
   width: 18px;
   height: 18px;
   fill: white;
+}
+
+.location-pin-focused {
+  border-color: #ffeb3b;
+  box-shadow: 0 0 0 4px rgba(255, 235, 59, 0.5), 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
 .map-legend {
