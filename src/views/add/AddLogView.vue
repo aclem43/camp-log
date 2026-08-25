@@ -18,6 +18,7 @@ const log = ref<Omit<Log, 'id' >>({
   name: '',
   description: '',
   weather: '',
+  terrainId: '',
   dateStart: new Date(),
   dateEnd: undefined,
 
