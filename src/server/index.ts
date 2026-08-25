@@ -17,8 +17,26 @@ const app = express()
 const port = Number.parseInt(proc.env.PORT as string ?? 3000)
 const hostname = proc.env.HOST ?? 'localhost'
 
-// app.use(helmet())
-// app.use(compression())
+app.use(helmet({
+  // Leaflet tiles are fetched cross-origin as plain <img> tags; the tile
+  // hosts below don't send CORP headers, so COEP would block them, and the
+  // default img-src ('self' + data:) would too.
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      'img-src': [
+        '\'self\'',
+        'data:',
+        'https://*.tile.openstreetmap.org',
+        'https://*.tile.opentopomap.org',
+        'https://server.arcgisonline.com',
+        'https://*.basemaps.cartocdn.com',
+      ],
+    },
+  },
+}))
+app.use(compression())
 
 app.all('/api/auth/*', toNodeHandler(auth))
 app.use(api)
