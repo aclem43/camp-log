@@ -36,3 +36,4 @@ db
 
 *.tsbuildinfo
 .env
+truenas-compose.yaml
