@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1 (2026-08-25)
+
+### Bug Fixes
+
+* The mobile menu now includes History, Statistics, Settings, and Logout, matching what's available on desktop.
+
 ## 1.1.0 (2026-08-25)
 
 ### Features
