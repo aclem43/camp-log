@@ -159,8 +159,8 @@ onActivated(async () => {
   gap: 4px;
   padding: 8px 12px;
   border-radius: 6px;
-  background: white;
-  color: #333;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
   font-size: 13px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
@@ -177,7 +177,8 @@ onActivated(async () => {
 
 .map-legend-filter :deep(.v-label) {
   font-size: 13px;
-  color: #333;
+  color: inherit;
+  opacity: 1;
 }
 
 .map-legend-swatch {
@@ -187,5 +188,33 @@ onActivated(async () => {
   border-radius: 50%;
   border: 1px solid white;
   box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+.leaflet-control-layers,
+.leaflet-bar a {
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.leaflet-bar a:hover {
+  background: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-on-surface-variant));
+}
+
+.leaflet-control-layers-toggle {
+  background-color: rgb(var(--v-theme-surface));
+}
+
+.leaflet-control-layers-expanded {
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.leaflet-control-layers-separator {
+  border-color: rgba(var(--v-theme-on-surface), 0.2);
+}
+
+.v-theme--dark .leaflet-control-layers-toggle {
+  filter: invert(1);
 }
 </style>
