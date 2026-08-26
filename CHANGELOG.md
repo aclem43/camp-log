@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.2 (2026-08-26)
+
+### Bug Fixes
+
+* Fixed the site still forcing HTTPS and failing to load on this deployment even after the previous fix, caused by another security setting that shouldn't have been enabled here.
+
 ## 1.2.1 (2026-08-26)
 
 ### Bug Fixes
