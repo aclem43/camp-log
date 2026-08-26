@@ -1,5 +1,5 @@
 # ---- Build stage ----
-FROM node:20-slim AS build
+FROM node:24-slim AS build
 WORKDIR /app
 
 RUN corepack enable
@@ -11,7 +11,7 @@ COPY . .
 RUN pnpm build
 
 # ---- Runtime stage ----
-FROM node:20-slim
+FROM node:24-slim
 WORKDIR /app
 
 ENV MODE=production
