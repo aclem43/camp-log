@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.1 (2026-08-26)
+
+### Bug Fixes
+
+* Fixed the site becoming unreachable with SSL errors on every page after your first visit, caused by a security header that shouldn't have been sent on this deployment.
+
 ## 1.2.0 (2026-08-26)
 
 ### Features
