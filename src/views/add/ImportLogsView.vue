@@ -36,10 +36,6 @@ interface TerrainExport {
   entries: TerrainEntry[]
 }
 
-// 'new' = create a location from the inline draft below, 'none' = leave the
-// log unlinked, a number = link to that existing location's id.
-type LocationChoice = number | 'new' | 'none'
-
 interface NewLocationDraft {
   name: string
   nicknames: string[]
@@ -60,7 +56,8 @@ interface ImportRow {
   dateStart: Date
   dateEnd?: Date
   locationText: string
-  locationChoice: LocationChoice
+  selectedLocationIds: number[]
+  addNewLocation: boolean
   newLocationDraft: NewLocationDraft
   status: 'pending' | 'success' | 'skipped' | 'error'
   error?: string
@@ -141,7 +138,8 @@ function buildRow(entry: TerrainEntry): ImportRow {
     dateStart: new Date(entry.start_date),
     dateEnd: entry.end_date ? new Date(entry.end_date) : undefined,
     locationText,
-    locationChoice: match ? match.id : (locationText ? 'new' : 'none'),
+    selectedLocationIds: match ? [match.id] : [],
+    addNewLocation: !match && !!locationText,
     newLocationDraft: {
       name: locationText || entry.title.trim(),
       nicknames: [],
@@ -245,16 +243,6 @@ function startOver() {
   currentIndex.value = 0
 }
 
-const locationOptions = computed(() => {
-  const options: { title: string, value: LocationChoice }[] = [
-    { title: '+ Create new location', value: 'new' },
-    { title: 'No location', value: 'none' },
-  ]
-  for (const l of existingLocations.value)
-    options.push({ title: l.name, value: l.id })
-  return options
-})
-
 const currentRow = computed(() => rows.value[currentIndex.value] as ImportRow | undefined)
 const totalCount = computed(() => rows.value.length)
 const importedCount = computed(() => rows.value.filter(r => r.status === 'success').length)
@@ -278,11 +266,14 @@ function goNext() {
 // location, link them to it instead of creating a near-duplicate later.
 function rematchPendingRows() {
   for (const row of rows.value) {
-    if (row.status !== 'pending' || row.locationChoice !== 'new')
+    if (row.status !== 'pending' || !row.addNewLocation)
       continue
     const match = findMatchingLocation(row.locationText)
-    if (match)
-      row.locationChoice = match.id
+    if (match) {
+      row.addNewLocation = false
+      if (!row.selectedLocationIds.includes(match.id))
+        row.selectedLocationIds.push(match.id)
+    }
   }
 }
 
@@ -323,11 +314,12 @@ async function findDraftAddress() {
   }
 }
 
-async function resolveLocation(row: ImportRow): Promise<Location | undefined> {
-  if (row.locationChoice === 'none')
-    return undefined
+async function resolveLocations(row: ImportRow): Promise<Location[]> {
+  const locations = row.selectedLocationIds
+    .map(id => existingLocations.value.find(l => l.id === id))
+    .filter((l): l is Location => !!l)
 
-  if (row.locationChoice === 'new') {
+  if (row.addNewLocation) {
     const draft = row.newLocationDraft
     const location = await locationRepo.insert({
       name: draft.name.trim() || row.locationText || row.name,
@@ -344,10 +336,10 @@ async function resolveLocation(row: ImportRow): Promise<Location | undefined> {
     })
     existingLocations.value.push(location)
     rematchPendingRows()
-    return location
+    locations.push(location)
   }
 
-  return existingLocations.value.find(l => l.id === row.locationChoice)
+  return locations
 }
 
 async function importCurrent() {
@@ -357,7 +349,7 @@ async function importCurrent() {
 
   saving.value = true
   try {
-    const location = await resolveLocation(row)
+    const locations = await resolveLocations(row)
     const log = await logRepo.insert({
       name: row.name,
       description: row.description,
@@ -367,8 +359,7 @@ async function importCurrent() {
       terrainId: row.raw.id,
       user: user.value!,
     })
-    if (location)
-      await logLocationRepo.insert({ log, location })
+    await Promise.allSettled(locations.map(location => logLocationRepo.insert({ log, location })))
     row.status = 'success'
     row.error = undefined
     if (currentIndex.value < rows.value.length - 1)
@@ -539,11 +530,16 @@ function skipCurrent() {
                 <v-divider />
 
                 <v-autocomplete
-                  v-model="currentRow.locationChoice"
-                  :items="locationOptions"
-                  label="Location"
+                  v-model="currentRow.selectedLocationIds"
+                  :items="existingLocations"
+                  label="Locations"
                   :prepend-inner-icon="mdiMapMarker"
                   variant="solo-filled"
+                  item-title="name"
+                  item-value="id"
+                  multiple
+                  chips
+                  closable-chips
                   hide-details
                   :disabled="currentRow.status === 'success'"
                 />
@@ -551,7 +547,15 @@ function skipCurrent() {
                   Terrain says: "{{ currentRow.locationText }}"
                 </p>
 
-                <v-card v-if="currentRow.locationChoice === 'new' && currentRow.status !== 'success'" variant="outlined">
+                <v-checkbox
+                  v-if="currentRow.status !== 'success'"
+                  v-model="currentRow.addNewLocation"
+                  label="Also create a new location"
+                  hide-details
+                  density="compact"
+                />
+
+                <v-card v-if="currentRow.addNewLocation && currentRow.status !== 'success'" variant="outlined">
                   <v-card-text class="d-flex flex-column ga-4">
                     <p class="text-subtitle-2 mb-0">
                       New Location
