@@ -18,6 +18,10 @@ const port = Number.parseInt(proc.env.PORT as string ?? 3000)
 const hostname = proc.env.HOST ?? 'localhost'
 
 app.use(helmet({
+  // This server is plain HTTP behind Tailscale (no TLS termination here),
+  // so an HSTS header would make browsers force-upgrade future requests
+  // to https and lock themselves out.
+  hsts: false,
   // Leaflet tiles are fetched cross-origin as plain <img> tags; the tile
   // hosts below don't send CORP headers, so COEP would block them, and the
   // default img-src ('self' + data:) would too.
