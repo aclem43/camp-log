@@ -1,7 +1,7 @@
 {
   "name": "camp-log",
   "type": "module",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "private": true,
   "engines": {
     "node": ">=24"
