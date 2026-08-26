@@ -29,6 +29,9 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      // Same reasoning as hsts above: this deployment is plain HTTP, so
+      // upgrading insecure requests would break every asset on the page.
+      'upgrade-insecure-requests': null,
       'img-src': [
         '\'self\'',
         'data:',
