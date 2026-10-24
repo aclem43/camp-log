@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { waitForServiceWorker } from './helpers'
 
 test('creating a location while offline queues it and syncs once back online', async ({ page, context }) => {
   const email = `e2e-${Date.now()}@example.com`
@@ -20,8 +21,11 @@ test('creating a location while offline queues it and syncs once back online', a
   // interactive before cutting the network — otherwise going offline can
   // race the in-flight session check and strand the page mid-navigation.
   await page.goto('/add/location')
-  const nameField = page.getByLabel('Name')
+  const nameField = page.getByLabel('Name', { exact: true })
   await expect(nameField).toBeVisible()
+  // Submitting navigates to the locations list, whose route chunk only loads
+  // offline from the service worker's precache.
+  await waitForServiceWorker(page)
 
   await context.setOffline(true)
 
