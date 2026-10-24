@@ -30,18 +30,43 @@ export default defineConfig({
       workbox: {
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
+          // Remult entity reads. Matched on the pathname - a RegExp urlPattern is
+          // tested against the full URL (http://host/api/...), so one anchored
+          // at /api never matches. NetworkFirst rather than StaleWhileRevalidate
+          // so that, online, a list re-fetched right after a save shows the
+          // save; the cache is only the fallback when the network fails.
+          // Cache names here are also cleared on logout (src/scripts/user.ts).
           {
-            urlPattern: /^\/api\/(location|log|activity|activityTemplate|user)(\/|\?|$)/,
-            handler: 'StaleWhileRevalidate',
+            urlPattern: ({ url, sameOrigin }) => sameOrigin
+              && /^\/api\/(?:location|log|log-location|activity|activityTemplate|user|photo)(?:\/[^/]+)?$/.test(url.pathname),
+            handler: 'NetworkFirst',
             method: 'GET',
             options: {
               cacheName: 'camp-log-api',
+              networkTimeoutSeconds: 5,
               expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24, // 1 day
+                maxEntries: 500,
+                // Long enough to outlast a trip away from signal.
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
               },
               cacheableResponse: {
-                statuses: [0, 200],
+                statuses: [200],
+              },
+            },
+          },
+          // Photo files never change once uploaded (a new upload gets a new id).
+          {
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && /^\/api\/photos\/\d+\/file$/.test(url.pathname),
+            handler: 'CacheFirst',
+            method: 'GET',
+            options: {
+              cacheName: 'camp-log-photos',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+              cacheableResponse: {
+                statuses: [200],
               },
             },
           },

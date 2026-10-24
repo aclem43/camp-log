@@ -1,7 +1,8 @@
 import { remult } from 'remult'
-import { readonly, ref } from 'vue'
+import { readonly, ref, watch } from 'vue'
 import { createAuthClient } from 'better-auth/vue'
 import { showAlert } from './alert'
+import { offline } from './connectivity'
 import type { UnitPreference } from '@/shared/models/auth/User'
 import router from '@/router'
 import { User } from '@/shared/models/auth/User'
@@ -21,13 +22,96 @@ export function checkLogin() {
   return loggedIn.value
 }
 
-async function hydrateFromSession() {
-  const { data } = await authClient.getSession()
-  if (data?.user) {
-    user.value = (await userRepo.findId(data.user.id)) ?? null
-    loggedIn.value = true
+// The last user confirmed signed in on this device, so the app can still
+// open with no signal (when the session can't be checked with the server).
+// Cleared on logout.
+const CACHED_USER_KEY = 'camp-log-user'
+
+function cacheUser(value: User | null) {
+  try {
+    if (value)
+      localStorage.setItem(CACHED_USER_KEY, JSON.stringify(userRepo.toJson(value)))
+    else
+      localStorage.removeItem(CACHED_USER_KEY)
+  }
+  catch {
+    // storage blocked (private mode etc.) - offline start just won't work
   }
 }
+
+function readCachedUser(): User | null {
+  try {
+    const raw = localStorage.getItem(CACHED_USER_KEY)
+    return raw ? userRepo.fromJson(JSON.parse(raw)) : null
+  }
+  catch {
+    return null
+  }
+}
+
+// The service worker's API and photo caches (see vite.config.ts) hold this
+// user's data - don't leave it behind for whoever signs in next.
+async function clearCachedData() {
+  if (!('caches' in window))
+    return
+  await Promise.all(['camp-log-api', 'camp-log-photos'].map(name => caches.delete(name))).catch(() => {})
+}
+
+// True while running on a session restored from the device cache rather than
+// one the server has confirmed.
+let sessionUnconfirmed = false
+
+async function hydrateFromSession() {
+  try {
+    const { data, error } = await authClient.getSession()
+    if (error)
+      throw error
+    // No error and no session means signed out (or the session expired).
+    user.value = data?.user ? (await userRepo.findId(data.user.id)) ?? null : null
+    loggedIn.value = !!data?.user
+    sessionUnconfirmed = false
+    cacheUser(loggedIn.value ? user.value : null)
+  }
+  catch {
+    // Couldn't reach the server (no signal at camp, or it's down) - that says
+    // nothing about whether the session is still valid, so carry on as the
+    // last user signed in on this device until it can be checked.
+    if (loggedIn.value)
+      return
+    const cached = readCachedUser()
+    if (cached) {
+      user.value = cached
+      loggedIn.value = true
+      sessionUnconfirmed = true
+    }
+  }
+}
+
+// Check a restored session with the server as soon as it's reachable again,
+// in case it expired or was revoked while this device was offline.
+async function confirmSession() {
+  if (!sessionUnconfirmed)
+    return
+  await hydrateFromSession()
+  if (!loggedIn.value) {
+    await clearCachedData()
+    router.push({ name: 'login' })
+    showAlert('Your session has expired. Please log in again.')
+  }
+}
+
+watch(offline, (isOffline) => {
+  if (!isOffline)
+    confirmSession()
+})
+// navigator.onLine can stay true while the server is unreachable (one bar of
+// signal, captive portal), so `offline` above may never flip - retry on the
+// same cues the outbox sync uses too.
+window.addEventListener('focus', () => confirmSession())
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible')
+    confirmSession()
+})
 
 let readyPromise: Promise<void> | null = null
 
@@ -86,9 +170,18 @@ export async function logInWithGoogle() {
 }
 
 export async function logOut(message = 'Logged out') {
-  await authClient.signOut()
+  try {
+    await authClient.signOut()
+  }
+  catch {
+    // Offline - the server-side session will expire on its own; what matters
+    // is that this device forgets it.
+  }
   loggedIn.value = false
   user.value = null
+  sessionUnconfirmed = false
+  cacheUser(null)
+  await clearCachedData()
   router.push({ name: 'login' })
   showAlert(message)
 }
