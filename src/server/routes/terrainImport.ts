@@ -1,6 +1,5 @@
-import type { Response as ExpressResponse } from 'express'
 import { Router } from 'express'
-import { remult } from 'remult'
+import { asyncHandler, requireUser } from '../http'
 
 const router: Router = Router()
 
@@ -13,14 +12,6 @@ const COGNITO_REGION = 'ap-southeast-2'
 const COGNITO_CLIENT_ID = '6v98tbc09aqfvh52fml3usas3c'
 const MEMBERS_API = 'https://members.terrain.scouts.com.au'
 const ACHIEVEMENTS_API = 'https://achievements.terrain.scouts.com.au'
-
-function requireUser(res: ExpressResponse) {
-  if (!remult.user) {
-    res.status(401).json({ message: 'Not authenticated' })
-    return null
-  }
-  return remult.user
-}
 
 // Terrain's Cognito app client has SRP disabled, so this is a plain
 // InitiateAuth call with the raw password (over HTTPS) rather than an SRP
@@ -68,7 +59,7 @@ async function terrainFetch(url: string, idToken: string) {
   return fetch(url, { headers: { authorization: `Bearer ${idToken}`, accept: 'application/json' } })
 }
 
-router.post('/terrain-import/scrape', async (req, res) => {
+router.post('/terrain-import/scrape', asyncHandler(async (req, res) => {
   if (!requireUser(res))
     return
 
@@ -132,6 +123,6 @@ router.post('/terrain-import/scrape', async (req, res) => {
   catch {
     res.status(500).json({ message: 'Logged in, but something went wrong talking to Terrain. Please try again.' })
   }
-})
+}))
 
 export default router
