@@ -3,6 +3,13 @@ import { Location } from './Location'
 import { Log } from './Log'
 import { User } from './auth/User'
 
+// Removes a photo's file from disk. This model is bundled into the frontend
+// too, so it can't touch the filesystem itself - the server plugs the real
+// implementation in (see src/server/photoStorage.ts).
+export const photoFiles = {
+  remove: async (_filename: string) => {},
+}
+
 // Inserts/deletes go through src/server/routes/photos.ts (multipart upload,
 // disk cleanup on delete) rather than the generic remult API - only reading
 // the resulting rows goes through the normal CRUD API.
@@ -13,6 +20,9 @@ import { User } from './auth/User'
   allowApiUpdate: false,
   allowApiDelete: false,
   apiPrefilter: () => ({ user: { $id: remult.user!.id } }),
+  deleted: async (photo) => {
+    await photoFiles.remove(photo.filename)
+  },
 })
 export class Photo {
   @Fields.autoIncrement()

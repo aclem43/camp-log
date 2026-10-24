@@ -63,7 +63,7 @@ async function load() {
 }
 
 async function deleteLog(log: Log) {
-  const confirmed = await askConfirm('Are you sure you want to delete this log?', { confirmText: 'Delete' })
+  const confirmed = await askConfirm('Are you sure you want to delete this log? Its activities and photos will be deleted too.', { confirmText: 'Delete' })
   if (!confirmed)
     return
   await logRepo.delete(log)

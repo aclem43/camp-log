@@ -1,4 +1,6 @@
 import { Allow, Entity, Fields, Relations, remult } from 'remult'
+import { LogLocation } from './LogLocation'
+import { Photo } from './Photo'
 import { User } from './auth/User'
 
 export const campTypes = ['remote', '2wdAcess', '4wdAcess', 'nonCampground', 'unknown']
@@ -35,6 +37,11 @@ export function campTypesToColor(campType: campTypesType) {
   apiPrefilter: () => ({ user: { $id: remult.user!.id } }),
   saving: (location) => {
     location.user = { id: remult.user!.id } as User
+  },
+  // Logs that visited this location are kept - they just lose the link.
+  deleting: async (location) => {
+    await remult.repo(LogLocation).deleteMany({ where: { location: { $id: location.id } } })
+    await remult.repo(Photo).deleteMany({ where: { location: { $id: location.id } } })
   },
 })
 export class Location {
