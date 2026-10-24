@@ -14,6 +14,7 @@ import { Account } from '../../shared/models/auth/Account'
 import { Session } from '../../shared/models/auth/Session'
 import { User } from '../../shared/models/auth/User'
 import { Verification } from '../../shared/models/auth/Verification'
+import { LogController } from '../../shared/controllers/LogController'
 
 export const api = remultExpress(
   {
@@ -30,6 +31,7 @@ export const api = remultExpress(
       Account,
       Verification,
     ],
+    controllers: [LogController],
     getUser: async (req) => {
       const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) })
       if (!session)

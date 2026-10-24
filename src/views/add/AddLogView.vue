@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { mdiCloud, mdiMapMarker } from '@mdi/js'
 import { remult } from 'remult'
-import { onMounted, ref, toRaw, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { useDisplay } from 'vuetify'
 import router from '@/router'
 import { Location } from '@/shared/models/Location'
 import DatePicker from '@/components/date-picker/DatePicker.vue'
 import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
-import { Log } from '@/shared/models/Log'
-import { LogLocation } from '@/shared/models/LogLocation'
+import type { Log } from '@/shared/models/Log'
+import { LogController, type LogInput } from '@/shared/controllers/LogController'
 import { showAlert } from '@/scripts/alert'
-import { isNetworkError, queueMutation } from '@/scripts/outbox'
-import { Activity } from '@/shared/models/Activity'
+import { isNetworkError, queueMutation, serverErrorMessage } from '@/scripts/outbox'
 import { getUser } from '@/scripts/user'
 
 const log = ref<Omit<Log, 'id' >>({
@@ -73,9 +72,18 @@ function addActivities() {
 function removeActivity(activity: { template: ActivityTemplate, value?: number }) {
   selectedActivities.value = selectedActivities.value.filter(a => a.template.id !== activity.template.id)
 }
-const logRepo = remult.repo(Log)
-const activityRepo = remult.repo(Activity)
-const logLocationRepo = remult.repo(LogLocation)
+function buildInput(): LogInput {
+  return {
+    name: log.value.name,
+    description: log.value.description,
+    weather: log.value.weather,
+    dateStart: log.value.dateStart,
+    dateEnd: log.value.dateEnd,
+    locationIds: selectedLocations.value.map(l => l.id),
+    activities: selectedActivities.value.map(a => ({ templateId: a.template.id, value: Number(a.value) || 0 })),
+  }
+}
+
 async function addLog() {
   if (!log.value.name || !log.value.dateStart) {
     showAlert('Name and Start Date are required')
@@ -87,68 +95,33 @@ async function addLog() {
   }
 
   saving.value = true
+  const input = buildInput()
   try {
     if (!navigator.onLine) {
-      await queueLogOffline()
+      await queueLogOffline(input)
       return
     }
 
-    const l = await logRepo.insert(log.value)
-
-    const [activityResults, locationResults] = await Promise.all([
-      Promise.allSettled(
-        selectedActivities.value.map(activity => activityRepo.insert({
-          template: activity.template,
-          value: activity.value,
-          log: l,
-        })),
-      ),
-      Promise.allSettled(
-        selectedLocations.value.map(location => logLocationRepo.insert({
-          location,
-          log: l,
-        })),
-      ),
-    ])
-    const failedActivities = activityResults.filter(r => r.status === 'rejected').length
-    const failedLocations = locationResults.filter(r => r.status === 'rejected').length
-
-    if (failedActivities > 0 || failedLocations > 0) {
-      const parts = []
-      if (failedActivities > 0)
-        parts.push(`${failedActivities} ${failedActivities === 1 ? 'activity' : 'activities'}`)
-      if (failedLocations > 0)
-        parts.push(`${failedLocations} ${failedLocations === 1 ? 'location' : 'locations'}`)
-      showAlert(`Log added, but ${parts.join(' and ')} failed to save`)
-    }
-    else {
-      showAlert('Log Added')
-    }
-
+    await LogController.createLog(input)
+    showAlert('Log Added')
     router.push({ name: 'logs' })
   }
   catch (err) {
     if (isNetworkError(err)) {
-      await queueLogOffline()
+      await queueLogOffline(input)
       return
     }
-    showAlert('Failed to add log. Please try again.')
+    const message = serverErrorMessage(err)
+    showAlert(message ? `Failed to add log: ${message}` : 'Failed to add log. Please try again.')
   }
   finally {
     saving.value = false
   }
 }
 
-async function queueLogOffline() {
-  await queueMutation('log', {
-    ...toRaw(log.value),
-    locationIds: selectedLocations.value.map(l => l.id),
-  })
-  showAlert(
-    selectedActivities.value.length
-      ? 'Saved offline — will sync when you\'re back online. Activities couldn\'t be attached and will need to be added afterwards.'
-      : 'Saved offline — will sync when you\'re back online.',
-  )
+async function queueLogOffline(input: LogInput) {
+  await queueMutation('log', { ...input })
+  showAlert('Saved offline — will sync when you\'re back online.')
   router.push({ name: 'logs' })
 }
 </script>

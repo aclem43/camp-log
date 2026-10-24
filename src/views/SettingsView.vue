@@ -77,7 +77,7 @@ onMounted(async () => {
 })
 
 async function removeActivity(activity: ActivityTemplate) {
-  const confirmed = await askConfirm('Are you sure you want to remove this activity?', { confirmText: 'Remove' })
+  const confirmed = await askConfirm('Are you sure you want to remove this activity? Every value logged for it will be deleted too.', { confirmText: 'Remove' })
   if (!confirmed)
     return
   await activityRepo.delete(activity.id)
@@ -162,7 +162,7 @@ async function importData() {
     showAlert(
       `Imported ${result.locations} location(s), ${result.activityTemplates} template(s), `
       + `${result.logs} log(s), ${result.activities} entrie(s)`
-      + `${result.failed ? `, ${result.failed} failed` : ''}`,
+      + `${result.skipped ? `, ${result.skipped} skipped (missing their log or activity)` : ''}`,
     )
     importFile.value = null
     await loadActivities()
