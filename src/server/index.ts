@@ -33,6 +33,10 @@ app.use(helmet({
   // hosts below don't send CORP headers, so COEP would block them, and the
   // default img-src ('self' + data:) would too.
   crossOriginEmbedderPolicy: false,
+  // helmet defaults to no-referrer, and tile.openstreetmap.org rejects tile
+  // requests without a Referer (403 "Access blocked"). This is the browser
+  // default: cross-origin requests get the origin only, never the path.
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),

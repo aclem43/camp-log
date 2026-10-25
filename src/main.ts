@@ -20,6 +20,11 @@ initialize().then(initSync)
 
 app.mount('#app')
 
+// Former tile cache, full of opaque responses (some of them OSM's 403
+// "Access blocked" tiles) - see the tile route in vite.config.ts.
+if ('caches' in window)
+  caches.delete('map-tiles').catch(() => {})
+
 const updateSW = registerSW({
   onNeedRefresh() {
     askConfirm('A new version of Camp Log is available.', {
