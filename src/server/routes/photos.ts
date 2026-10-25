@@ -1,7 +1,5 @@
 import fs from 'node:fs'
-import fsp from 'node:fs/promises'
 import path from 'node:path'
-import process from 'node:process'
 import { randomUUID } from 'node:crypto'
 import type { NextFunction, Request, Response } from 'express'
 import type { UserInfo } from 'remult'
@@ -12,17 +10,15 @@ import { Location } from '../../shared/models/Location'
 import { Log } from '../../shared/models/Log'
 import { Photo } from '../../shared/models/Photo'
 import type { User } from '../../shared/models/auth/User'
-import { proc } from '../config'
 import { dataProvider } from '../db/dataProvider'
+import { asyncHandler, requireUser } from '../http'
+import { removePhotoFile, uploadsDir } from '../photoStorage'
 
 interface RequestWithUser extends Request {
   authUser?: UserInfo
 }
 
 const router: Router = Router()
-
-const uploadsDir = path.resolve(proc.env.UPLOADS_DIR ?? './uploads')
-fs.mkdirSync(uploadsDir, { recursive: true })
 
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 const MAX_FILE_SIZE = 15 * 1024 * 1024
@@ -51,14 +47,6 @@ const upload = multer({
   },
 })
 
-function requireUser(res: Response) {
-  if (!remult.user) {
-    res.status(401).json({ message: 'Not authenticated' })
-    return null
-  }
-  return remult.user
-}
-
 router.post(
   '/photos',
   // multer's disk storage engine signals completion from inside a stream
@@ -74,7 +62,7 @@ router.post(
     next()
   },
   upload.single('file'),
-  async (req: RequestWithUser, res) => {
+  asyncHandler<RequestWithUser>(async (req, res) => {
     const authUser = req.authUser
     if (!authUser) {
       res.status(401).json({ message: 'Not authenticated' })
@@ -118,11 +106,11 @@ router.post(
         res.json(photo)
       }
       catch (err) {
-        await fsp.unlink(path.join(uploadsDir, req.file!.filename)).catch(() => {})
+        await removePhotoFile(req.file!.filename)
         res.status(400).json({ message: err instanceof Error ? err.message : 'Failed to save photo' })
       }
     }, { dataProvider })
-  },
+  }),
 )
 
 // Catches errors thrown by upload.single('file') above (bad mimetype, file
@@ -136,7 +124,7 @@ router.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
   res.status(400).json({ message: err instanceof Error ? err.message : 'Upload failed' })
 })
 
-router.get('/photos/:id/file', async (req, res) => {
+router.get('/photos/:id/file', asyncHandler(async (req, res) => {
   const authUser = requireUser(res)
   if (!authUser)
     return
@@ -151,9 +139,9 @@ router.get('/photos/:id/file', async (req, res) => {
     if (err && !res.headersSent)
       res.status(404).end()
   })
-})
+}))
 
-router.delete('/photos/:id', async (req, res) => {
+router.delete('/photos/:id', asyncHandler(async (req, res) => {
   const authUser = requireUser(res)
   if (!authUser)
     return
@@ -164,9 +152,9 @@ router.delete('/photos/:id', async (req, res) => {
     return
   }
 
+  // The Photo entity's `deleted` hook removes the file (see ../photoStorage).
   await remult.repo(Photo).delete(photo)
-  await fsp.unlink(path.join(uploadsDir, photo.filename)).catch(() => {})
   res.json({ success: true })
-})
+}))
 
 export default router

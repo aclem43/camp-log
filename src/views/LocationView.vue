@@ -127,7 +127,7 @@ async function deleteLocation() {
   if (!location.value)
     return
 
-  const confirmed = await askConfirm('Are you sure you want to delete this location? This cannot be undone.', { confirmText: 'Delete' })
+  const confirmed = await askConfirm('Are you sure you want to delete this location? Its photos will be deleted too, and logs will no longer link to it. This cannot be undone.', { confirmText: 'Delete' })
   if (!confirmed)
     return
 

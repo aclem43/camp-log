@@ -9,10 +9,12 @@ import { Activity } from '@/shared/models/Activity'
 import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
 import { LogLocation } from '@/shared/models/LogLocation'
 import { Location } from '@/shared/models/Location'
+import { LogController } from '@/shared/controllers/LogController'
 import PhotoGallery from '@/components/PhotoGallery.vue'
 import DatePicker from '@/components/date-picker/DatePicker.vue'
 import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
+import { serverErrorMessage } from '@/scripts/outbox'
 import { getUser } from '@/scripts/user'
 import router from '@/router'
 
@@ -36,17 +38,14 @@ const log = ref<Log | null>(null)
 const oneDay = ref(false)
 
 interface ActivityRow {
-  id?: number
   template: ActivityTemplate
   value: number
 }
 
-const existingActivities = ref<(Activity & { template: ActivityTemplate })[]>([])
 const activityRows = ref<ActivityRow[]>([])
 const templates = ref<ActivityTemplate[]>([])
 const currentlySelectedActivity = ref<ActivityTemplate | null>(null)
 
-const existingLogLocations = ref<(LogLocation & { location: Location })[]>([])
 const selectedLocations = ref<Location[]>([])
 const locationOptions = ref<Location[]>([])
 
@@ -86,13 +85,15 @@ async function load() {
     ])
     templates.value = allTemplates
 
-    // template/location can resolve to null if the linked row was since
-    // deleted (Settings has no cascade cleanup) - drop those rather than crash.
-    existingActivities.value = activityLinks.filter((a): a is Activity & { template: ActivityTemplate } => !!a.template)
-    activityRows.value = existingActivities.value.map(a => ({ id: a.id, template: a.template, value: a.value }))
+    // template/location can resolve to null for rows orphaned before deletes
+    // cascaded - drop those rather than crash (saving then removes them).
+    activityRows.value = activityLinks
+      .filter((a): a is Activity & { template: ActivityTemplate } => !!a.template)
+      .map(a => ({ template: a.template, value: a.value }))
 
-    existingLogLocations.value = locationLinks.filter((l): l is LogLocation & { location: Location } => !!l.location)
-    selectedLocations.value = existingLogLocations.value.map(l => l.location)
+    selectedLocations.value = locationLinks
+      .filter((l): l is LogLocation & { location: Location } => !!l.location)
+      .map(l => l.location)
     locationOptions.value = selectedLocations.value.slice()
   }
   catch {
@@ -133,37 +134,21 @@ async function save() {
 
   saving.value = true
   try {
-    await logRepo.update(log.value.id, log.value)
-
-    const currentLocationIds = new Set(selectedLocations.value.map(l => l.id))
-    const existingLocationIds = new Set(existingLogLocations.value.map(link => link.location.id))
-    const removedLinks = existingLogLocations.value.filter(link => !currentLocationIds.has(link.location.id))
-    const addedLocations = selectedLocations.value.filter(l => !existingLocationIds.has(l.id))
-
-    const currentActivityIds = new Set(activityRows.value.filter(r => r.id).map(r => r.id))
-    const removedActivities = existingActivities.value.filter(a => !currentActivityIds.has(a.id))
-    const addedActivityRows = activityRows.value.filter(r => !r.id)
-    const updatedActivityRows = activityRows.value.filter((r) => {
-      if (!r.id)
-        return false
-      const original = existingActivities.value.find(a => a.id === r.id)
-      return !!original && original.value !== r.value
+    await LogController.updateLog(log.value.id, {
+      name: log.value.name,
+      description: log.value.description,
+      weather: log.value.weather,
+      dateStart: log.value.dateStart,
+      dateEnd: log.value.dateEnd,
+      locationIds: selectedLocations.value.map(l => l.id),
+      activities: activityRows.value.map(r => ({ templateId: r.template.id, value: Number(r.value) || 0 })),
     })
-
-    const results = await Promise.allSettled([
-      ...removedLinks.map(link => logLocationRepo.delete(link)),
-      ...addedLocations.map(loc => logLocationRepo.insert({ location: loc, log: log.value! })),
-      ...removedActivities.map(a => activityRepo.delete(a)),
-      ...addedActivityRows.map(r => activityRepo.insert({ template: r.template, value: r.value, log: log.value! })),
-      ...updatedActivityRows.map(r => activityRepo.update(r.id!, { value: r.value })),
-    ])
-
-    const failures = results.filter(r => r.status === 'rejected').length
-    showAlert(failures > 0 ? `Log updated, but ${failures} related change${failures === 1 ? '' : 's'} failed to save` : 'Log updated')
+    showAlert('Log updated')
     await load()
   }
-  catch {
-    showAlert('Failed to update log. Please check your connection and try again.')
+  catch (err) {
+    const message = serverErrorMessage(err)
+    showAlert(message ? `Failed to update log: ${message}` : 'Failed to update log. Please check your connection and try again.')
   }
   finally {
     saving.value = false
@@ -174,7 +159,7 @@ async function deleteLog() {
   if (!log.value)
     return
 
-  const confirmed = await askConfirm('Are you sure you want to delete this log? This cannot be undone.', { confirmText: 'Delete' })
+  const confirmed = await askConfirm('Are you sure you want to delete this log? Its activities and photos will be deleted too. This cannot be undone.', { confirmText: 'Delete' })
   if (!confirmed)
     return
 

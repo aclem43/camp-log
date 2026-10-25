@@ -1,4 +1,5 @@
 import { Allow, Entity, Fields, Relations, remult } from 'remult'
+import { Activity } from './Activity'
 import { User } from './auth/User'
 
 @Entity<ActivityTemplate>('activityTemplate', {
@@ -7,6 +8,11 @@ import { User } from './auth/User'
     apiPrefilter: () => ({ user: { $id: remult.user!.id } }),
     saving: (activityTemplate) => {
       activityTemplate.user = { id: remult.user!.id } as User
+    },
+    // An activity is meaningless without its template (no name or unit), so
+    // the values logged against it go too.
+    deleting: async (activityTemplate) => {
+      await remult.repo(Activity).deleteMany({ where: { template: { $id: activityTemplate.id } } })
     },
 })
 export class ActivityTemplate {

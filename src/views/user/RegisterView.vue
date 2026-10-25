@@ -1,12 +1,21 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { mdiGoogle } from '@mdi/js'
+import { showAlert } from '@/scripts/alert'
 import { logInWithGoogle, register } from '@/scripts/user'
 
 const name = ref('')
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
+
+function submit() {
+  if (password.value !== confirmPassword.value) {
+    showAlert('Passwords don\'t match')
+    return
+  }
+  register({ email: email.value, password: password.value, name: name.value })
+}
 </script>
 
 <template>
@@ -16,7 +25,7 @@ const confirmPassword = ref('')
         Register
       </v-card-title>
       <v-card-text>
-        <v-form>
+        <v-form @submit.prevent="submit">
           <v-text-field
             v-model="name"
             label="Name"
@@ -48,12 +57,12 @@ const confirmPassword = ref('')
           <div class="d-flex justify-space-between">
             <v-btn
               color="primary"
-              @click="() => register({ email, password, name })"
+              type="submit"
             >
               Register
             </v-btn>
             <div>
-              Alread have an account?
+              Already have an account?
               <router-link :to="{ name: 'login' }">
                 Login
               </router-link>

@@ -1,4 +1,3 @@
-import type { Response } from 'express'
 import { Router } from 'express'
 import { remult } from 'remult'
 import { fromNodeHeaders } from 'better-auth/node'
@@ -9,18 +8,12 @@ import { Log } from '../../shared/models/Log'
 import { LogLocation } from '../../shared/models/LogLocation'
 import { User, unitPreferences } from '../../shared/models/auth/User'
 import { auth } from '../auth'
+import { inTransaction } from '../db/transaction'
+import { asyncHandler, requireUser } from '../http'
 
 const router: Router = Router()
 
-function requireUser(res: Response) {
-  if (!remult.user) {
-    res.status(401).json({ message: 'Not authenticated' })
-    return null
-  }
-  return remult.user
-}
-
-router.patch('/profile', async (req, res) => {
+router.patch('/profile', asyncHandler(async (req, res) => {
   const authUser = requireUser(res)
   if (!authUser)
     return
@@ -46,9 +39,9 @@ router.patch('/profile', async (req, res) => {
   user.unitPreference = unitPreference
   await userRepo.save(user)
   res.json({ id: user.id, name: user.name, unitPreference: user.unitPreference })
-})
+}))
 
-router.post('/deactivate-account', async (req, res) => {
+router.post('/deactivate-account', asyncHandler(async (req, res) => {
   const authUser = requireUser(res)
   if (!authUser)
     return
@@ -72,9 +65,9 @@ router.post('/deactivate-account', async (req, res) => {
   }
 
   res.json({ success: true })
-})
+}))
 
-router.get('/export-data', async (req, res) => {
+router.get('/export-data', asyncHandler(async (req, res) => {
   const authUser = requireUser(res)
   if (!authUser)
     return
@@ -106,6 +99,7 @@ router.get('/export-data', async (req, res) => {
         id: l.id,
         name: l.name,
         notes: l.notes,
+        nicknames: l.nicknames,
         type: l.type,
         address: l.address,
         city: l.city,
@@ -125,6 +119,7 @@ router.get('/export-data', async (req, res) => {
         name: l.name,
         description: l.description,
         weather: l.weather,
+        terrainId: l.terrainId,
         dateStart: l.dateStart,
         dateEnd: l.dateEnd,
         locationIds: locationIdsByLogId.get(l.id) ?? [],
@@ -140,9 +135,9 @@ router.get('/export-data', async (req, res) => {
 
   res.setHeader('Content-Disposition', `attachment; filename="camp-log-export-${new Date().toISOString().slice(0, 10)}.json"`)
   res.json(payload)
-})
+}))
 
-router.post('/import-data', async (req, res) => {
+router.post('/import-data', asyncHandler(async (req, res) => {
   const authUser = requireUser(res)
   if (!authUser)
     return
@@ -160,103 +155,101 @@ router.post('/import-data', async (req, res) => {
     activities = [],
   } = body.data
 
-  const locationRepo = remult.repo(Location)
-  const templateRepo = remult.repo(ActivityTemplate)
-  const logRepo = remult.repo(Log)
-  const activityRepo = remult.repo(Activity)
-  const logLocationRepo = remult.repo(LogLocation)
+  // Skipped = links the file refers to but doesn't contain (an activity whose
+  // log or template is missing), which can't be imported but don't make the
+  // file invalid.
+  const counts = { locations: 0, activityTemplates: 0, logs: 0, activities: 0, skipped: 0 }
 
-  const locationIdMap = new Map<number, Location>()
-  const templateIdMap = new Map<number, ActivityTemplate>()
-  const logIdMap = new Map<number, Log>()
+  // All or nothing: if any row fails, nothing is kept, so a bad file can be
+  // fixed and re-imported without leaving half its data behind as duplicates.
+  try {
+    await inTransaction(async () => {
+      // Repos must be created inside the transaction - each one is bound to
+      // the data provider that was current when it was created.
+      const locationRepo = remult.repo(Location)
+      const templateRepo = remult.repo(ActivityTemplate)
+      const logRepo = remult.repo(Log)
+      const activityRepo = remult.repo(Activity)
+      const logLocationRepo = remult.repo(LogLocation)
 
-  const counts = { locations: 0, activityTemplates: 0, logs: 0, activities: 0, failed: 0 }
+      const locationIdMap = new Map<number, Location>()
+      const templateIdMap = new Map<number, ActivityTemplate>()
+      const logIdMap = new Map<number, Log>()
 
-  for (const loc of locations) {
-    try {
-      const created = await locationRepo.insert({
-        name: loc.name ?? '',
-        notes: loc.notes ?? '',
-        type: campTypes.includes(loc.type) ? loc.type : 'unknown',
-        address: loc.address ?? '',
-        city: loc.city ?? '',
-        state: loc.state ?? '',
-        country: loc.country ?? '',
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-      })
-      if (typeof loc.id === 'number')
-        locationIdMap.set(loc.id, created)
-      counts.locations++
-    }
-    catch {
-      counts.failed++
-    }
-  }
-
-  for (const tmpl of activityTemplates) {
-    try {
-      const created = await templateRepo.insert({
-        name: tmpl.name ?? '',
-        description: tmpl.description ?? '',
-        unit: tmpl.unit ?? '',
-      })
-      if (typeof tmpl.id === 'number')
-        templateIdMap.set(tmpl.id, created)
-      counts.activityTemplates++
-    }
-    catch {
-      counts.failed++
-    }
-  }
-
-  for (const log of logs) {
-    try {
-      const created = await logRepo.insert({
-        name: log.name ?? '',
-        description: log.description ?? '',
-        weather: log.weather ?? '',
-        dateStart: log.dateStart ? new Date(log.dateStart) : new Date(),
-        dateEnd: log.dateEnd ? new Date(log.dateEnd) : undefined,
-      })
-      if (typeof log.id === 'number')
-        logIdMap.set(log.id, created)
-      counts.logs++
-
-      // v2 exports carry locationIds (many-to-many); older v1 exports carry
-      // a single locationId - support both so old export files still import.
-      const locationIds: number[] = Array.isArray(log.locationIds)
-        ? log.locationIds
-        : (typeof log.locationId === 'number' ? [log.locationId] : [])
-      for (const locationId of locationIds) {
-        const location = locationIdMap.get(locationId)
-        if (!location)
-          continue
-        await logLocationRepo.insert({ log: created, location })
+      for (const loc of locations) {
+        const created = await locationRepo.insert({
+          name: loc.name ?? '',
+          notes: loc.notes ?? '',
+          nicknames: loc.nicknames ?? '',
+          type: campTypes.includes(loc.type) ? loc.type : 'unknown',
+          address: loc.address ?? '',
+          city: loc.city ?? '',
+          state: loc.state ?? '',
+          country: loc.country ?? '',
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+        })
+        if (typeof loc.id === 'number')
+          locationIdMap.set(loc.id, created)
+        counts.locations++
       }
-    }
-    catch {
-      counts.failed++
-    }
-  }
 
-  for (const act of activities) {
-    const template = act.templateId != null ? templateIdMap.get(act.templateId) : undefined
-    const log = act.logId != null ? logIdMap.get(act.logId) : undefined
-    if (!template || !log) {
-      counts.failed++
-      continue
-    }
-    try {
-      await activityRepo.insert({ value: act.value ?? 0, template, log })
-      counts.activities++
-    }
-    catch {
-      counts.failed++
-    }
+      for (const tmpl of activityTemplates) {
+        const created = await templateRepo.insert({
+          name: tmpl.name ?? '',
+          description: tmpl.description ?? '',
+          unit: tmpl.unit ?? '',
+        })
+        if (typeof tmpl.id === 'number')
+          templateIdMap.set(tmpl.id, created)
+        counts.activityTemplates++
+      }
+
+      for (const log of logs) {
+        const created = await logRepo.insert({
+          name: log.name ?? '',
+          description: log.description ?? '',
+          weather: log.weather ?? '',
+          terrainId: log.terrainId ?? '',
+          dateStart: log.dateStart ? new Date(log.dateStart) : new Date(),
+          dateEnd: log.dateEnd ? new Date(log.dateEnd) : undefined,
+        })
+        if (typeof log.id === 'number')
+          logIdMap.set(log.id, created)
+        counts.logs++
+
+        // v2 exports carry locationIds (many-to-many); older v1 exports carry
+        // a single locationId - support both so old export files still import.
+        const locationIds: number[] = Array.isArray(log.locationIds)
+          ? log.locationIds
+          : (typeof log.locationId === 'number' ? [log.locationId] : [])
+        for (const locationId of locationIds) {
+          const location = locationIdMap.get(locationId)
+          if (!location)
+            continue
+          await logLocationRepo.insert({ log: created, location })
+        }
+      }
+
+      for (const act of activities) {
+        const template = act.templateId != null ? templateIdMap.get(act.templateId) : undefined
+        const log = act.logId != null ? logIdMap.get(act.logId) : undefined
+        if (!template || !log) {
+          counts.skipped++
+          continue
+        }
+        await activityRepo.insert({ value: act.value ?? 0, template, log })
+        counts.activities++
+      }
+    })
+  }
+  catch (err) {
+    console.error('Data import failed and was rolled back:', err)
+    res.status(400).json({ message: `Import failed, so nothing was imported: ${err instanceof Error ? err.message : 'invalid data'}` })
+    return
   }
 
   res.json(counts)
-})
+}))
 
 export default router

@@ -14,6 +14,7 @@ import { Account } from '../../shared/models/auth/Account'
 import { Session } from '../../shared/models/auth/Session'
 import { User } from '../../shared/models/auth/User'
 import { Verification } from '../../shared/models/auth/Verification'
+import { LogController } from '../../shared/controllers/LogController'
 
 export const api = remultExpress(
   {
@@ -30,6 +31,7 @@ export const api = remultExpress(
       Account,
       Verification,
     ],
+    controllers: [LogController],
     getUser: async (req) => {
       const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) })
       if (!session)
@@ -37,5 +39,13 @@ export const api = remultExpress(
       return { id: session.user.id, name: session.user.name } as UserInfo
     },
     dataProvider,
+    // Remult puts the server-side stack trace in every error response. Keep it
+    // in dev for debugging; elsewhere it's only logged (remult already does).
+    error: isDev
+      ? undefined
+      : async (e) => {
+        const { stack: _stack, ...body } = e.responseBody ?? {}
+        e.sendError(e.httpStatusCode, body)
+      },
   },
 )

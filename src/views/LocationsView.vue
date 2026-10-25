@@ -58,7 +58,7 @@ watch(() => pendingLocationRows.value.length, (_, previous) => {
 })
 
 async function deleteLocation(location: Location) {
-  const confirmed = await askConfirm('Are you sure you want to delete this location?', { confirmText: 'Delete' })
+  const confirmed = await askConfirm('Are you sure you want to delete this location? Its photos will be deleted too, and logs will no longer link to it.', { confirmText: 'Delete' })
   if (!confirmed)
     return
   await remult.repo(Location).delete(location)
@@ -92,7 +92,7 @@ async function deleteLocation(location: Location) {
               ]"
               :items="rows"
               :items-per-page="5"
-              :sort-by="[{ key: 'dateStart', order: 'desc' }]"
+              :sort-by="[{ key: 'name', order: 'asc' }]"
             >
               <template #[`item.name`]="{ item }">
                 {{ item.name }}

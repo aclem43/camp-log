@@ -79,4 +79,13 @@ export function isNetworkError(err: unknown) {
   return err instanceof TypeError
 }
 
+// The server's explanation for a failed remult call, if it gave one - remult
+// throws HTTP errors as plain `{ message, status }` objects, not Error
+// instances. Undefined for network failures ("Failed to fetch" helps no-one).
+export function serverErrorMessage(err: unknown): string | undefined {
+  if (isNetworkError(err))
+    return undefined
+  return (err as { message?: string } | undefined)?.message
+}
+
 refreshPending()

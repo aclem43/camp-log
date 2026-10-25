@@ -15,6 +15,7 @@ const photoRepo = remult.repo(Photo)
 
 const photos = ref<Photo[]>([])
 const loading = ref(true)
+const loadError = ref(false)
 const uploading = ref(false)
 const lightboxPhoto = ref<Photo | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -61,11 +62,19 @@ async function compressImage(file: File): Promise<File> {
 
 async function loadPhotos() {
   loading.value = true
-  photos.value = await photoRepo.find({
-    where: props.logId ? { log: { $id: props.logId } } : { location: { $id: props.locationId! } },
-    orderBy: { createdAt: 'desc' },
-  })
-  loading.value = false
+  loadError.value = false
+  try {
+    photos.value = await photoRepo.find({
+      where: props.logId ? { log: { $id: props.logId } } : { location: { $id: props.locationId! } },
+      orderBy: { createdAt: 'desc' },
+    })
+  }
+  catch {
+    loadError.value = true
+  }
+  finally {
+    loading.value = false
+  }
 }
 
 onMounted(loadPhotos)
@@ -139,6 +148,15 @@ async function deletePhoto(photo: Photo) {
     </div>
 
     <v-skeleton-loader v-if="loading" type="image" />
+
+    <v-alert v-else-if="loadError" type="error" variant="tonal" density="compact">
+      Couldn't load photos.
+      <template #append>
+        <v-btn size="small" variant="text" @click="loadPhotos">
+          Retry
+        </v-btn>
+      </template>
+    </v-alert>
 
     <div v-else-if="photos.length" class="photo-grid">
       <div v-for="photo in photos" :key="photo.id" class="photo-thumb" @click="lightboxPhoto = photo">

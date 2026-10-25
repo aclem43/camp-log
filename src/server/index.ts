@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 import process from 'node:process'
+import type { NextFunction, Request, Response } from 'express'
 import express from 'express'
 import helmet from 'helmet'
 import compression from 'compression'
@@ -71,6 +72,18 @@ if (isProd) {
     res.sendFile(`${frontendFiles}/index.html`)
   })
 }
+
+// Last-resort handler for errors thrown by routes (async ones reach it via
+// asyncHandler in ./http.ts) - log it and fail just this request rather than
+// leaving it hanging or taking the server down.
+app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+  console.error(`[server] ${req.method} ${req.originalUrl} failed:`, err)
+  if (res.headersSent) {
+    next(err)
+    return
+  }
+  res.status(500).json({ message: 'Something went wrong. Please try again.' })
+})
 
 app.listen(port, hostname, () => {
   console.log(`[server] Server is running on http://${hostname}:${port}`)

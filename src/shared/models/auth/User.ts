@@ -3,6 +3,10 @@ import { Allow, Entity, Fields, remult } from 'remult'
 export const unitPreferences = ['metric', 'imperial'] as const
 export type UnitPreference = typeof unitPreferences[number]
 
+// Enforced by better-auth (src/server/auth.ts); the register form checks it
+// too so it can say so up front.
+export const MIN_PASSWORD_LENGTH = 8
+
 @Entity<User>('user', {
   dbName: 'camp.user',
   allowApiCrud: false,

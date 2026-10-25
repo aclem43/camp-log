@@ -12,6 +12,10 @@ onMounted(() => {
     router.push({ name: 'home' })
   }
 })
+
+function submit() {
+  logIn({ email: email.value, password: password.value })
+}
 </script>
 
 <template>
@@ -21,7 +25,7 @@ onMounted(() => {
         Login
       </v-card-title>
       <v-card-text>
-        <v-form>
+        <v-form @submit.prevent="submit">
           <v-text-field
             v-model="email"
             label="Email"
@@ -40,7 +44,7 @@ onMounted(() => {
           <div class="d-flex justify-space-between">
             <v-btn
               color="primary"
-              @click="() => logIn({ email, password })"
+              type="submit"
             >
               Login
             </v-btn>

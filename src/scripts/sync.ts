@@ -1,9 +1,8 @@
 import { remult } from 'remult'
 import { showAlert } from './alert'
-import { isNetworkError, markFailed, pendingItems, removePending } from './outbox'
+import { isNetworkError, markFailed, pendingItems, removePending, serverErrorMessage } from './outbox'
+import { LogController, type LogInput } from '@/shared/controllers/LogController'
 import { Location } from '@/shared/models/Location'
-import { Log } from '@/shared/models/Log'
-import { LogLocation } from '@/shared/models/LogLocation'
 import { offline } from '@/scripts/connectivity'
 import { checkLogin } from '@/scripts/user'
 
@@ -19,13 +18,14 @@ export async function syncOutbox() {
     for (const item of items) {
       try {
         if (item.entity === 'log') {
-          const { locationIds, ...logPayload } = item.payload as Partial<Log> & { locationIds?: number[] }
-          const log = await remult.repo(Log).insert(logPayload)
-          if (locationIds?.length) {
-            await Promise.allSettled(
-              locationIds.map(id => remult.repo(LogLocation).insert({ log, location: { id } as Location })),
-            )
-          }
+          // Logs queued before activities could be saved offline have no
+          // `activities` key.
+          const payload = item.payload as Partial<LogInput>
+          await LogController.createLog({
+            ...payload,
+            locationIds: payload.locationIds ?? [],
+            activities: payload.activities ?? [],
+          } as LogInput)
         }
         else {
           await remult.repo(Location).insert(item.payload as Partial<Location>)
@@ -37,7 +37,7 @@ export async function syncOutbox() {
           // still offline, or the request couldn't reach the server — stop and retry later
           return
         }
-        await markFailed(item.id, err instanceof Error ? err.message : 'Sync failed')
+        await markFailed(item.id, serverErrorMessage(err) ?? 'Sync failed')
         showAlert(`A saved ${item.entity} couldn't be synced — see the pending item to retry or discard it.`)
       }
     }

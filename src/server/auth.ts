@@ -2,7 +2,7 @@ import { APIError, betterAuth } from 'better-auth'
 import { remultAdapter } from '@nerdfolio/remult-better-auth'
 import { Account } from '../shared/models/auth/Account'
 import { Session } from '../shared/models/auth/Session'
-import { User } from '../shared/models/auth/User'
+import { MIN_PASSWORD_LENGTH, User } from '../shared/models/auth/User'
 import { Verification } from '../shared/models/auth/Verification'
 import { dataProvider } from './db/dataProvider'
 import { isDev, proc } from './config'
@@ -15,6 +15,7 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    minPasswordLength: MIN_PASSWORD_LENGTH,
   },
   user: {
     additionalFields: {
