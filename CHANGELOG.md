@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.3.0 (2026-10-25)
+
+### Features
+
+* Camp Log now opens with no signal — you stay signed in and can browse the logs, locations and photos you'd already viewed, instead of getting a blank page.
+* Logs saved while offline now keep their activities when they sync.
+* Terrain logbook entries can now be linked to more than one campsite when importing.
+
+### Bug Fixes
+
+* Fixed logs occasionally being saved with some of their locations or activities missing if the connection dropped mid-save.
+* Importing a data file is now all-or-nothing: if anything in it can't be imported, nothing is, so you can fix the file and try again without ending up with duplicates.
+* Exports now include location nicknames and which logs came from Terrain, so they're kept when you import the file again.
+* Deleting a log or location now also deletes its photos and activities instead of leaving them behind. Removing an activity type now deletes the values logged for it.
+* Fixed changing a multi-day log to a single day not removing its end date.
+* Fixed the Confirm Password field on the registration page not being checked.
+* The registration page now asks for at least 8 characters up front, instead of accepting shorter passwords that were then rejected.
+* Pressing Enter now submits the login and registration forms.
+* Fixed a message disappearing early when it appeared right after another one.
+* Fixed photos loading forever when they couldn't be loaded — you now get an error and a Retry button.
+* When a log fails to save or sync, the message now says why.
+* Fixed the site going down entirely after certain bad requests, and pages hanging indefinitely when the database stops responding.
+
+### Security
+
+* Looking up an address now requires being signed in.
+* Error messages no longer reveal internal server details.
+
 ## 1.2.2 (2026-08-26)
 
 ### Bug Fixes
