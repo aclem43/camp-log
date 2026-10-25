@@ -238,7 +238,7 @@ onActivated(async () => {
 }
 
 .leaflet-control-layers-separator {
-  border-color: rgba(var(--v-theme-on-surface), 0.2);
+  border-color: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 20%, transparent);
 }
 
 .v-theme--dark .leaflet-control-layers-toggle {

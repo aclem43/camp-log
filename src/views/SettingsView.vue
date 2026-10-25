@@ -314,16 +314,16 @@ async function importData() {
             <v-divider v-if="index > 0" class="my-4" />
 
             <div v-if="release.sections.length === 0" class="d-flex align-baseline flex-wrap ga-2">
-              <span class="text-subtitle-2 font-weight-bold">{{ release.version }}</span>
-              <span class="text-caption text-medium-emphasis">{{ release.date }} · No notable changes</span>
+              <span class="text-title-small font-weight-bold">{{ release.version }}</span>
+              <span class="text-body-small text-medium-emphasis">{{ release.date }} · No notable changes</span>
             </div>
             <div v-else>
               <div class="d-flex align-baseline ga-2 mb-3">
-                <span class="text-subtitle-1 font-weight-bold">{{ release.version }}</span>
-                <span class="text-caption text-medium-emphasis">{{ release.date }}</span>
+                <span class="text-body-large font-weight-bold">{{ release.version }}</span>
+                <span class="text-body-small text-medium-emphasis">{{ release.date }}</span>
               </div>
               <div v-for="(section, sIndex) in release.sections" :key="section.title" :class="sIndex > 0 ? 'mt-3' : ''">
-                <div class="text-caption text-uppercase font-weight-bold mb-1" :class="sectionColor(section.title)">
+                <div class="text-body-small text-uppercase font-weight-bold mb-1" :class="sectionColor(section.title)">
                   {{ section.title }}
                 </div>
                 <ul class="changelog-list">

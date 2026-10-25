@@ -177,7 +177,7 @@ async function queueLogOffline(input: LogInput) {
                   <v-checkbox v-model="oneDay" label="One Day" hide-details density="compact" />
                 </v-col>
               </v-row>
-              <v-row dense>
+              <v-row density="compact">
                 <v-col :cols="mobile || oneDay ? 12 : 6">
                   <DatePicker v-model="log.dateStart" label="Start Date" />
                 </v-col>

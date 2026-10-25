@@ -140,7 +140,7 @@ async function deletePhoto(photo: Photo) {
 <template>
   <div class="d-flex flex-column ga-4">
     <div class="d-flex align-center justify-space-between">
-      <span class="text-subtitle-1">Photos</span>
+      <span class="text-body-large">Photos</span>
       <v-btn size="small" color="primary" :prepend-icon="mdiImagePlus" :loading="uploading" @click="triggerFileInput">
         Add Photos
       </v-btn>

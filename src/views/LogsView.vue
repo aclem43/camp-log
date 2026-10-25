@@ -136,7 +136,7 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
   <v-container>
     <v-col>
       <div class="d-flex flex-column ga-4">
-        <h1 class="text-h5">
+        <h1 class="text-headline-small">
           Logs
         </h1>
 

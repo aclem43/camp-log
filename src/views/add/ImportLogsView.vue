@@ -435,7 +435,7 @@ function skipCurrent() {
 
         <template v-else>
           <div class="d-flex align-center justify-space-between ga-4">
-            <div class="text-body-2">
+            <div class="text-body-medium">
               <strong>{{ importedCount }}</strong> imported ·
               <strong>{{ skippedCount }}</strong> skipped ·
               <strong>{{ remainingCount }}</strong> remaining of {{ totalCount }}
@@ -510,7 +510,7 @@ function skipCurrent() {
 
                 <div
                   v-if="currentRow.raw.details?.other_participants || currentRow.raw.details?.purpose || currentRow.raw.details?.verifier?.name"
-                  class="text-body-2 text-medium-emphasis"
+                  class="text-body-medium text-medium-emphasis"
                 >
                   <div v-if="currentRow.raw.details?.purpose">
                     Purpose: {{ currentRow.raw.details.purpose }}
@@ -543,7 +543,7 @@ function skipCurrent() {
                   hide-details
                   :disabled="currentRow.status === 'success'"
                 />
-                <p v-if="currentRow.locationText" class="text-caption text-medium-emphasis">
+                <p v-if="currentRow.locationText" class="text-body-small text-medium-emphasis">
                   Terrain says: "{{ currentRow.locationText }}"
                 </p>
 
@@ -557,7 +557,7 @@ function skipCurrent() {
 
                 <v-card v-if="currentRow.addNewLocation && currentRow.status !== 'success'" variant="outlined">
                   <v-card-text class="d-flex flex-column ga-4">
-                    <p class="text-subtitle-2 mb-0">
+                    <p class="text-title-small mb-0">
                       New Location
                     </p>
                     <v-text-field
@@ -583,7 +583,7 @@ function skipCurrent() {
                         Find
                       </v-btn>
                     </div>
-                    <div v-if="currentRow.newLocationDraft.latitude" class="text-caption text-medium-emphasis">
+                    <div v-if="currentRow.newLocationDraft.latitude" class="text-body-small text-medium-emphasis">
                       {{ currentRow.newLocationDraft.city }}, {{ currentRow.newLocationDraft.state }},
                       {{ currentRow.newLocationDraft.country }}
                     </div>
