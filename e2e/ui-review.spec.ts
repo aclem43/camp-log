@@ -1,78 +1,10 @@
 import { Buffer } from 'node:buffer'
-import type { BrowserContext, Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
-import { waitForServiceWorker } from './helpers'
+import { api, createLocation, createLog, failRequests, goOffline, outboxCount, signUp, snackbar, uid, visit, waitForServiceWorker } from './helpers'
 
 // Covers the P0/P1 fixes from UI_REVIEW.md. Failures are simulated with
 // context.route() (which also sees service worker requests) or by taking the
 // browser offline.
-
-const PASSWORD = 'test1234'
-
-function uid() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-async function signUp(page: Page) {
-  const baseURL = test.info().project.use.baseURL!
-  const email = `e2e-${uid()}@example.com`
-  const resp = await page.request.post('/api/auth/sign-up/email', {
-    data: { email, password: PASSWORD, name: 'E2E Test User' },
-    headers: { Origin: baseURL },
-  })
-  expect(resp.ok()).toBeTruthy()
-  return email
-}
-
-// A freshly loaded page sees the pointer at (0, 0) - over the desktop rail
-// drawer, which then expands on hover and covers the left of the page.
-async function visit(page: Page, path: string) {
-  await page.goto(path)
-  await page.mouse.move(600, 300)
-}
-
-async function api<T = any>(page: Page, method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, data?: unknown): Promise<T> {
-  const resp = await page.request.fetch(path, { method, data })
-  expect(resp.ok(), `${method} ${path} -> ${resp.status()} ${await resp.text()}`).toBeTruthy()
-  return resp.json()
-}
-
-function createLocation(page: Page, data: Record<string, unknown>) {
-  return api(page, 'POST', '/api/location', { latitude: -35.3, longitude: 149.1, type: 'remote', ...data })
-}
-
-async function createLog(page: Page, input: Record<string, unknown>) {
-  const result = await api(page, 'POST', '/api/createLog', {
-    args: [{ description: '', weather: '', dateStart: new Date().toISOString(), activities: [], ...input }],
-  })
-  return result.data as number
-}
-
-function snackbar(page: Page) {
-  return page.locator('.v-snackbar')
-}
-
-async function outboxCount(page: Page) {
-  return page.evaluate(() => new Promise<number>((resolve, reject) => {
-    const open = indexedDB.open('camp-log-outbox')
-    open.onerror = () => reject(open.error)
-    open.onsuccess = () => {
-      const count = open.result.transaction('pending').objectStore('pending').count()
-      count.onsuccess = () => resolve(count.result)
-    }
-  }))
-}
-
-// Network failure as fetch sees it (TypeError: Failed to fetch).
-async function failRequests(context: BrowserContext, pattern: string, method?: string) {
-  await context.route(pattern, route =>
-    !method || route.request().method() === method ? route.abort('internetdisconnected') : route.fallback())
-}
-
-async function goOffline(page: Page, context: BrowserContext) {
-  await context.setOffline(true)
-  await expect(page.getByText('You\'re offline')).toBeVisible({ timeout: 20_000 })
-}
 
 test.afterEach(async ({ page, context }) => {
   await context.unrouteAll({ behavior: 'ignoreErrors' })
@@ -151,7 +83,7 @@ test.describe('online', () => {
     await page.locator('.dp__calendar_item:not(:has(.dp__cell_offset))').first().click()
     await page.getByRole('button', { name: 'Select' }).click()
     await page.getByRole('button', { name: 'Add Log' }).click()
-    await expect(snackbar(page)).toContainText('End Date can’t be before the Start Date')
+    await expect(page.getByText('End Date can’t be before the Start Date')).toBeVisible()
     await expect(page).toHaveURL(/\/add\/log$/)
   })
 
@@ -301,7 +233,8 @@ test.describe('online', () => {
     await visit(page, `/location/${location.id}`)
     await page.getByLabel('Name', { exact: true }).fill('   ')
     await page.getByRole('button', { name: 'Save' }).click()
-    await expect(snackbar(page)).toContainText('Please enter a name for the location')
+    await expect(page.getByText('Please enter a name for the location')).toBeVisible()
+    await expect(page.getByLabel('Name', { exact: true })).toBeFocused()
     const saved = await api(page, 'GET', `/api/location/${location.id}`)
     expect(saved.name).toBe('Named Camp')
   })
@@ -449,7 +382,7 @@ test.describe('online', () => {
     await goOffline(page, context)
     await page.getByRole('button', { name: 'Export Data' }).click()
     await expect(snackbar(page)).toContainText('Exporting needs a connection')
-    await expect(page).toHaveURL(/\/settings$/)
+    await expect(page).toHaveURL(/\/settings\?panel=data$/)
   })
 
   test('P1: importing a non-JSON file says so', async ({ page }) => {
@@ -624,6 +557,7 @@ test.describe('offline with the service worker', () => {
     const row = page.locator('tr', { hasText: camp })
     await expect(row.getByText('Sync failed')).toBeVisible({ timeout: 20_000 })
 
+    await expect(row.getByText('nope')).toBeVisible() // the reason, not just a tooltip
     await context.unrouteAll()
     await row.getByTitle('Retry sync').click()
     await expect(page.locator('tr', { hasText: camp }).getByText(/Sync failed|Pending sync/)).toHaveCount(0, { timeout: 20_000 })
