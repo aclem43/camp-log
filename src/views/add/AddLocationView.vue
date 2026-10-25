@@ -322,7 +322,7 @@ async function queueLocationOffline() {
             <div>
               <div class="location-map" :class="{ 'location-map--readonly': !showMapPicker }">
                 <LMap v-model:zoom="mapZoom" :center="mapCenter" @ready="onMapReady">
-                  <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" :options="{ crossOrigin: true }" layer-type="base" name="OpenStreetMap" />
+                  <LTileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" :options="{ crossOrigin: true }" layer-type="base" name="OpenStreetMap" />
                   <LMarker v-if="hasPin" :lat-lng="markerLatLng" :draggable="showMapPicker" @update:lat-lng="onMarkerMove">
                     <LIcon class-name="location-marker-icon" :icon-size="[30, 30]" :icon-anchor="[15, 15]">
                       <div class="location-pin">

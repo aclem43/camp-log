@@ -18,7 +18,7 @@ const port = Number.parseInt(proc.env.PORT as string ?? 3000)
 const hostname = proc.env.HOST ?? 'localhost'
 
 const tileHosts = [
-  'https://*.tile.openstreetmap.org',
+  'https://tile.openstreetmap.org',
   'https://*.tile.opentopomap.org',
   'https://server.arcgisonline.com',
   'https://*.basemaps.cartocdn.com',

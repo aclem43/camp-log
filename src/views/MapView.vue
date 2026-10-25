@@ -89,7 +89,7 @@ onActivated(load)
   <div style="height: 100%; width: 100%; position: relative;">
     <LMap v-model:zoom="zoom" :center="center" @ready="onMapReady">
       <LTileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         :options="{ crossOrigin: true }"
         layer-type="base"
         name="OpenStreetMap"

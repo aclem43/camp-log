@@ -77,7 +77,7 @@ export default defineConfig({
           // which overflowed storage. The old 'map-tiles' cache held those and
           // is deleted in src/main.ts.
           {
-            urlPattern: /^https:\/\/[abc]\.tile\.openstreetmap\.org\//,
+            urlPattern: /^https:\/\/tile\.openstreetmap\.org\//,
             handler: 'CacheFirst',
             options: {
               cacheName: 'osm-tiles',
