@@ -17,6 +17,13 @@ const app = express()
 const port = Number.parseInt(proc.env.PORT as string ?? 3000)
 const hostname = proc.env.HOST ?? 'localhost'
 
+const tileHosts = [
+  'https://*.tile.openstreetmap.org',
+  'https://*.tile.opentopomap.org',
+  'https://server.arcgisonline.com',
+  'https://*.basemaps.cartocdn.com',
+]
+
 app.use(helmet({
   // This server is plain HTTP behind Tailscale (no TLS termination here),
   // so an HSTS header would make browsers force-upgrade future requests
@@ -32,14 +39,11 @@ app.use(helmet({
       // Same reasoning as hsts above: this deployment is plain HTTP, so
       // upgrading insecure requests would break every asset on the page.
       'upgrade-insecure-requests': null,
-      'img-src': [
-        '\'self\'',
-        'data:',
-        'https://*.tile.openstreetmap.org',
-        'https://*.tile.opentopomap.org',
-        'https://server.arcgisonline.com',
-        'https://*.basemaps.cartocdn.com',
-      ],
+      'img-src': ['\'self\'', 'data:', ...tileHosts],
+      // The service worker caches tiles (runtimeCaching in vite.config.ts),
+      // so it re-requests them with fetch(), which connect-src governs -
+      // without this it falls back to default-src 'self' and blocks them.
+      'connect-src': ['\'self\'', ...tileHosts],
     },
   },
 }))
