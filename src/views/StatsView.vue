@@ -49,7 +49,7 @@ const rows = computed(() => [
 ])
 
 onMounted(async () => {
-  activities.value = await remult.repo(Activity).find({where: { user: user.value! }, include: { template: true } })
+  activities.value = await remult.repo(Activity).find({ where: { user: user.value! }, include: { template: true } })
   laodStats()
 
   logs.value = await remult.repo(Log).find({ where: { user: user.value! } })

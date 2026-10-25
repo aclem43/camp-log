@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
 import { useDisplay } from 'vuetify'
-import { onMounted } from 'vue'
 import BottomBar from './components/BottomBar.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import OnlineStatusBanner from './components/OnlineStatusBanner.vue'
 import { setupAlert } from './scripts/alert'
 import { darkTheme } from './scripts/theme'
 import NavBar from './components/NavBar.vue'
-import { getLoggedIn, initialize } from './scripts/user'
+import { getLoggedIn } from './scripts/user'
 
 const alert = setupAlert()
 const { mobile } = useDisplay()

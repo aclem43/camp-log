@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { checkLogin, getLoggedIn, whenReady } from '@/scripts/user'
+import { checkLogin, whenReady } from '@/scripts/user'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),

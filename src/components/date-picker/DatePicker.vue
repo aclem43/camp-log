@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import VueDatePicker from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
-import { ref } from 'vue'
 import { mdiCalendar } from '@mdi/js'
 import type { DatePickerProps } from './DataPicker'
 
-const props = defineProps<DatePickerProps>()
+defineProps<DatePickerProps>()
 
 const date = defineModel({
   default: new Date(),
