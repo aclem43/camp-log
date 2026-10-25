@@ -29,7 +29,7 @@ const loggedIn = getLoggedIn()
     <BottomBar v-if="mobile && loggedIn" />
     <NavBar v-else-if="loggedIn" />
     <ConfirmDialog />
-    <v-snackbar v-model="alert.show" :timeout="alert.duration" variant="flat">
+    <v-snackbar :key="alert.id" v-model="alert.show" :timeout="alert.duration" variant="flat">
       {{ alert.message }}
       <template #actions>
         <v-btn

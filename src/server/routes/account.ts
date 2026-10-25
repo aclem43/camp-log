@@ -99,6 +99,7 @@ router.get('/export-data', asyncHandler(async (req, res) => {
         id: l.id,
         name: l.name,
         notes: l.notes,
+        nicknames: l.nicknames,
         type: l.type,
         address: l.address,
         city: l.city,
@@ -118,6 +119,7 @@ router.get('/export-data', asyncHandler(async (req, res) => {
         name: l.name,
         description: l.description,
         weather: l.weather,
+        terrainId: l.terrainId,
         dateStart: l.dateStart,
         dateEnd: l.dateEnd,
         locationIds: locationIdsByLogId.get(l.id) ?? [],
@@ -178,6 +180,7 @@ router.post('/import-data', asyncHandler(async (req, res) => {
         const created = await locationRepo.insert({
           name: loc.name ?? '',
           notes: loc.notes ?? '',
+          nicknames: loc.nicknames ?? '',
           type: campTypes.includes(loc.type) ? loc.type : 'unknown',
           address: loc.address ?? '',
           city: loc.city ?? '',
@@ -207,6 +210,7 @@ router.post('/import-data', asyncHandler(async (req, res) => {
           name: log.name ?? '',
           description: log.description ?? '',
           weather: log.weather ?? '',
+          terrainId: log.terrainId ?? '',
           dateStart: log.dateStart ? new Date(log.dateStart) : new Date(),
           dateEnd: log.dateEnd ? new Date(log.dateEnd) : undefined,
         })

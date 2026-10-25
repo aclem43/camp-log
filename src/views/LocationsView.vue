@@ -92,7 +92,7 @@ async function deleteLocation(location: Location) {
               ]"
               :items="rows"
               :items-per-page="5"
-              :sort-by="[{ key: 'dateStart', order: 'desc' }]"
+              :sort-by="[{ key: 'name', order: 'asc' }]"
             >
               <template #[`item.name`]="{ item }">
                 {{ item.name }}

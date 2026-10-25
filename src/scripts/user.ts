@@ -5,7 +5,7 @@ import { showAlert } from './alert'
 import { offline } from './connectivity'
 import type { UnitPreference } from '@/shared/models/auth/User'
 import router from '@/router'
-import { User } from '@/shared/models/auth/User'
+import { MIN_PASSWORD_LENGTH, User } from '@/shared/models/auth/User'
 
 const authClient = createAuthClient()
 
@@ -146,8 +146,8 @@ export async function register(userData: {
   password: string
   name: string
 }) {
-  if (userData.password.length < 6) {
-    showAlert('Password must be at least 6 characters')
+  if (userData.password.length < MIN_PASSWORD_LENGTH) {
+    showAlert(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`)
     return
   }
   const { error } = await authClient.signUp.email(userData)
