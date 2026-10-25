@@ -39,5 +39,13 @@ export const api = remultExpress(
       return { id: session.user.id, name: session.user.name } as UserInfo
     },
     dataProvider,
+    // Remult puts the server-side stack trace in every error response. Keep it
+    // in dev for debugging; elsewhere it's only logged (remult already does).
+    error: isDev
+      ? undefined
+      : async (e) => {
+        const { stack: _stack, ...body } = e.responseBody ?? {}
+        e.sendError(e.httpStatusCode, body)
+      },
   },
 )
