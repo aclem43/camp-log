@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { mdiAccount, mdiChartLine, mdiCog, mdiPlus } from '@mdi/js'
 import { remult } from 'remult'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { Location } from '@/shared/models/Location'
 import { Log } from '@/shared/models/Log'
+import LoadError from '@/components/LoadError.vue'
+import { pendingItems } from '@/scripts/outbox'
 import { getUser } from '@/scripts/user'
 
 const { mobile } = useDisplay()
@@ -49,9 +51,33 @@ async function loadLogs() {
   }
 }
 
+// Logs saved offline come first - they're the most recent.
+const recentLogs = computed(() => [
+  ...pendingItems.value
+    .filter(item => item.entity === 'log')
+    .map(item => ({
+      key: item.id,
+      title: (item.payload.name as string) || 'Untitled log',
+      subtitle: `${(item.payload.dateStart as Date | undefined)?.toLocaleDateString() ?? ''} · ${item.status === 'failed' ? 'Sync failed' : 'Waiting to sync'}`,
+    })),
+  ...logs.value.map(log => ({
+    key: String(log.id),
+    title: log.name || 'Untitled log',
+    subtitle: log.dateStart.toLocaleDateString(),
+  })),
+].slice(0, LIST_LIMIT))
+
 onMounted(async () => {
   loadLocations()
   loadLogs()
+})
+
+// A queued log or location just synced - show it as a real one.
+watch(() => pendingItems.value.length, (count, previous) => {
+  if (count < previous) {
+    loadLocations()
+    loadLogs()
+  }
 })
 </script>
 
@@ -96,9 +122,7 @@ onMounted(async () => {
             <template v-if="locationsLoading">
               <v-skeleton-loader v-for="x in 4" :key="x" type="list-item" />
             </template>
-            <v-alert v-else-if="locationsError" type="error" variant="tonal" density="compact">
-              Couldn't load your campsites. Please try again later.
-            </v-alert>
+            <LoadError v-else-if="locationsError" what="your campsites" @retry="loadLocations" />
             <v-list v-else-if="locations.length">
               <v-list-item
                 v-for="loc in locations"
@@ -128,15 +152,13 @@ onMounted(async () => {
             <template v-if="logsLoading">
               <v-skeleton-loader v-for="x in 4" :key="x" type="list-item" />
             </template>
-            <v-alert v-else-if="logsError" type="error" variant="tonal" density="compact">
-              Couldn't load your logs. Please try again later.
-            </v-alert>
-            <v-list v-else-if="logs.length">
+            <LoadError v-else-if="logsError && !recentLogs.length" what="your logs" @retry="loadLogs" />
+            <v-list v-else-if="recentLogs.length">
               <v-list-item
-                v-for="log in logs"
-                :key="log.id"
-                :title="log.name || 'Untitled log'"
-                :subtitle="log.dateStart.toLocaleDateString()"
+                v-for="log in recentLogs"
+                :key="log.key"
+                :title="log.title"
+                :subtitle="log.subtitle"
               />
             </v-list>
             <p v-else class="text-medium-emphasis">

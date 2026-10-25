@@ -7,6 +7,9 @@ import { Location, campTypes, campTypesToText, type campTypesType } from '@/shar
 import { Log } from '@/shared/models/Log'
 import { LogLocation } from '@/shared/models/LogLocation'
 import { showAlert } from '@/scripts/alert'
+import { offline } from '@/scripts/connectivity'
+import { startOfDay } from '@/scripts/dates'
+import { describeFailure, isNetworkError, serverErrorMessage } from '@/scripts/outbox'
 import { getUser } from '@/scripts/user'
 
 const user = getUser()
@@ -160,14 +163,24 @@ function buildRow(entry: TerrainEntry): ImportRow {
 
 async function loadEntries(entries: TerrainEntry[]) {
   loadingEntries.value = true
-  const [locations, alreadyImported] = await Promise.all([
-    locationRepo.find({ where: { user: user.value! } }),
-    entries.length
-      ? logRepo.find({ where: { user: user.value!, terrainId: entries.map(e => e.id) } })
-      : Promise.resolve([]),
-  ])
+  let locations: Location[]
+  let alreadyImported: Log[]
+  try {
+    [locations, alreadyImported] = await Promise.all([
+      locationRepo.find({ where: { user: user.value! } }),
+      entries.length
+        ? logRepo.find({ where: { user: user.value!, terrainId: entries.map(e => e.id) } })
+        : Promise.resolve([]),
+    ])
+  }
+  catch (err) {
+    showAlert(describeFailure('load your locations and past imports', err))
+    return
+  }
+  finally {
+    loadingEntries.value = false
+  }
   existingLocations.value = locations
-  loadingEntries.value = false
 
   const importedIds = new Set(alreadyImported.map(l => l.terrainId))
   rows.value = entries.map((entry) => {
@@ -252,7 +265,8 @@ const currentRow = computed(() => rows.value[currentIndex.value] as ImportRow | 
 const totalCount = computed(() => rows.value.length)
 const importedCount = computed(() => rows.value.filter(r => r.status === 'success').length)
 const skippedCount = computed(() => rows.value.filter(r => r.status === 'skipped').length)
-const remainingCount = computed(() => rows.value.filter(r => r.status === 'pending').length)
+// A row that failed to import still needs dealing with (retry or skip).
+const remainingCount = computed(() => rows.value.filter(r => r.status === 'pending' || r.status === 'error').length)
 const allDone = computed(() => rows.value.length > 0 && remainingCount.value === 0)
 const progressPercent = computed(() => totalCount.value === 0 ? 0 : ((importedCount.value + skippedCount.value) / totalCount.value) * 100)
 
@@ -266,12 +280,12 @@ function goNext() {
     currentIndex.value++
 }
 
-// After a new location is created, re-check any still-pending rows that were
+// After a new location is created, re-check any rows not yet imported that were
 // also proposing "create new" - if their text now matches the just-created
 // location, link them to it instead of creating a near-duplicate later.
 function rematchPendingRows() {
   for (const row of rows.value) {
-    if (row.status !== 'pending' || !row.addNewLocation)
+    if (row.status === 'success' || row.status === 'skipped' || !row.addNewLocation)
       continue
     const match = findMatchingLocation(row.locationText)
     if (match) {
@@ -283,7 +297,7 @@ function rematchPendingRows() {
 }
 
 const findAddressDisabled = computed(() => {
-  if (!currentRow.value || findingAddress.value)
+  if (!currentRow.value || findingAddress.value || offline.value)
     return true
   return currentRow.value.newLocationDraft.address.length === 0
 })
@@ -311,8 +325,8 @@ async function findDraftAddress() {
     row.newLocationDraft.state = result.info?.state ?? row.newLocationDraft.state
     row.newLocationDraft.country = result.info?.country ?? row.newLocationDraft.country
   }
-  catch {
-    showAlert('Failed to find address')
+  catch (err) {
+    showAlert(describeFailure('find address', err))
   }
   finally {
     findingAddress.value = false
@@ -356,7 +370,7 @@ async function importCurrent() {
   if (!row || row.status === 'success')
     return
 
-  if (row.dateEnd && row.dateEnd < row.dateStart) {
+  if (row.dateEnd && startOfDay(row.dateEnd) < startOfDay(row.dateStart)) {
     row.status = 'error'
     row.error = 'End date is before the start date'
     return
@@ -391,7 +405,11 @@ async function importCurrent() {
   }
   catch (err) {
     row.status = 'error'
-    row.error = err instanceof Error ? err.message : 'Failed to import'
+    // remult throws server errors as plain objects, not Errors
+    if (isNetworkError(err))
+      row.error = 'You’re offline. Retry when you have a connection.'
+    else
+      row.error = (err instanceof Error ? err.message : serverErrorMessage(err)) || 'Failed to import'
   }
   finally {
     saving.value = false

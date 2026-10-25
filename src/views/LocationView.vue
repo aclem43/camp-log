@@ -5,9 +5,12 @@ import { computed, onMounted, ref } from 'vue'
 import { remult } from 'remult'
 import 'leaflet/dist/leaflet.css'
 import { Location, campTypes, campTypesToText, type campTypesType } from '@/shared/models/Location'
+import LoadError from '@/components/LoadError.vue'
 import PhotoGallery from '@/components/PhotoGallery.vue'
 import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
+import { offline } from '@/scripts/connectivity'
+import { describeFailure } from '@/scripts/outbox'
 import { getUser } from '@/scripts/user'
 import router from '@/router'
 
@@ -19,8 +22,10 @@ const user = getUser()
 const locationRepo = remult.repo(Location)
 
 const loading = ref(true)
+const loadError = ref(false)
 const location = ref<Location | null>(null)
 const saving = ref(false)
+const deleting = ref(false)
 const findingAddress = ref(false)
 
 const campTypesText = campTypes.map(t => ({ title: campTypesToText(t as campTypesType), value: t }))
@@ -56,15 +61,26 @@ function onMarkerMove(latLng: LatLngTuple | { lat: number, lng: number }) {
   location.value.longitude = lng
 }
 
-onMounted(async () => {
-  location.value = (await locationRepo.findOne({ where: { id: props.id, user: user.value! } })) ?? null
-  loading.value = false
-  if (hasPin.value)
-    mapCenter.value = markerLatLng.value
-})
+async function load() {
+  loading.value = true
+  loadError.value = false
+  try {
+    location.value = (await locationRepo.findOne({ where: { id: props.id, user: user.value! } })) ?? null
+    if (hasPin.value)
+      mapCenter.value = markerLatLng.value
+  }
+  catch {
+    loadError.value = true
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+onMounted(load)
 
 const findDisabled = computed(() => {
-  if (!location.value || findingAddress.value)
+  if (!location.value || findingAddress.value || offline.value)
     return true
   return location.value.address.length === 0
 })
@@ -98,8 +114,8 @@ async function findAddress() {
     mapCenter.value = [result.latitude, result.longitude]
     mapZoom.value = Math.max(mapZoom.value, 13)
   }
-  catch {
-    showAlert('Failed to find address')
+  catch (err) {
+    showAlert(describeFailure('find address', err))
   }
   finally {
     findingAddress.value = false
@@ -119,8 +135,8 @@ async function save() {
     await locationRepo.update(location.value.id, location.value)
     showAlert('Location updated')
   }
-  catch {
-    showAlert('Failed to update location')
+  catch (err) {
+    showAlert(describeFailure('update location', err))
   }
   finally {
     saving.value = false
@@ -135,9 +151,18 @@ async function deleteLocation() {
   if (!confirmed)
     return
 
-  await locationRepo.delete(location.value)
-  showAlert('Location deleted')
-  router.push({ name: 'locations' })
+  deleting.value = true
+  try {
+    await locationRepo.delete(location.value)
+    showAlert('Location deleted')
+    router.push({ name: 'locations' })
+  }
+  catch (err) {
+    showAlert(describeFailure('delete location', err))
+  }
+  finally {
+    deleting.value = false
+  }
 }
 </script>
 
@@ -149,6 +174,8 @@ async function deleteLocation() {
           <v-skeleton-loader type="article" />
         </v-card-text>
       </v-card>
+
+      <LoadError v-else-if="loadError" what="this location" @retry="load" />
 
       <v-card v-else-if="!location">
         <v-card-title>
@@ -172,7 +199,7 @@ async function deleteLocation() {
           <div class="d-flex flex-column ga-6">
             <v-text-field v-model="location.name" hide-details label="Name" required variant="solo-filled" />
             <v-combobox
-              v-model="nicknamesArray" hide-details label="Nicknames" multiple chips closable-chips
+              v-model="nicknamesArray" label="Nicknames" multiple chips closable-chips
               variant="solo-filled" hint="Alternate names to help you find this place later" persistent-hint
             />
             <v-textarea v-model="location.notes" hide-details label="Notes" required variant="solo-filled" />
@@ -194,17 +221,19 @@ async function deleteLocation() {
               <v-text-field v-model.number="location.longitude" hide-details label="Longitude" type="number" variant="solo-filled" />
             </div>
 
-            <div v-if="hasPin" class="location-map">
-              <LMap v-model:zoom="mapZoom" :center="mapCenter">
-                <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" layer-type="base" name="OpenStreetMap" />
-                <LMarker :lat-lng="markerLatLng" draggable @update:lat-lng="onMarkerMove">
-                  <LIcon class-name="location-marker-icon" :icon-size="[30, 30]" :icon-anchor="[15, 15]">
-                    <div class="location-pin">
-                      <svg viewBox="0 0 24 24"><path :d="mdiMapMarker" /></svg>
-                    </div>
-                  </LIcon>
-                </LMarker>
-              </LMap>
+            <div v-if="hasPin">
+              <div class="location-map">
+                <LMap v-model:zoom="mapZoom" :center="mapCenter">
+                  <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" layer-type="base" name="OpenStreetMap" />
+                  <LMarker :lat-lng="markerLatLng" draggable @update:lat-lng="onMarkerMove">
+                    <LIcon class-name="location-marker-icon" :icon-size="[30, 30]" :icon-anchor="[15, 15]">
+                      <div class="location-pin">
+                        <svg viewBox="0 0 24 24"><path :d="mdiMapMarker" /></svg>
+                      </div>
+                    </LIcon>
+                  </LMarker>
+                </LMap>
+              </div>
               <div class="map-hint">
                 Drag the pin to fine-tune the location
               </div>
@@ -219,7 +248,7 @@ async function deleteLocation() {
               <v-btn color="primary" :loading="saving" @click="save">
                 Save
               </v-btn>
-              <v-btn color="error" :prepend-icon="mdiDelete" @click="deleteLocation">
+              <v-btn color="error" :prepend-icon="mdiDelete" :loading="deleting" @click="deleteLocation">
                 Delete
               </v-btn>
             </div>

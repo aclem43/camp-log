@@ -33,7 +33,6 @@ const color = computed(() => {
       :color="color"
       density="compact"
       :icon="offline ? mdiWifiOff : mdiSync"
-      lines="one"
       :text="messages.join(' ')"
     >
       <template v-if="!offline && (pendingCount > 0 || failedCount > 0)" #actions>

@@ -5,6 +5,8 @@ import { remult } from 'remult'
 import { Photo } from '@/shared/models/Photo'
 import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
+import { offline } from '@/scripts/connectivity'
+import { describeFailure, isNetworkError } from '@/scripts/outbox'
 
 const props = defineProps<{
   logId?: number
@@ -91,6 +93,7 @@ async function onFilesSelected(event: Event) {
 
   uploading.value = true
   let failures = 0
+  let lostConnection = false
 
   for (const rawFile of Array.from(files)) {
     const file = await compressImage(rawFile)
@@ -109,15 +112,18 @@ async function onFilesSelected(event: Event) {
       }
       photos.value.unshift(await resp.json())
     }
-    catch {
+    catch (err) {
       failures++
+      lostConnection ||= isNetworkError(err)
     }
   }
 
   uploading.value = false
   input.value = ''
 
-  if (failures > 0)
+  if (lostConnection)
+    showAlert(`${failures} photo${failures === 1 ? '' : 's'} didn’t upload: uploading needs a connection. Add ${failures === 1 ? 'it' : 'them'} again when you’re back online.`)
+  else if (failures > 0)
     showAlert(`${failures} photo${failures === 1 ? '' : 's'} failed to upload`)
 }
 
@@ -126,7 +132,14 @@ async function deletePhoto(photo: Photo) {
   if (!confirmed)
     return
 
-  const resp = await fetch(`/api/photos/${photo.id}`, { method: 'DELETE' })
+  let resp: Response
+  try {
+    resp = await fetch(`/api/photos/${photo.id}`, { method: 'DELETE' })
+  }
+  catch (err) {
+    showAlert(describeFailure('delete photo', err))
+    return
+  }
   if (!resp.ok) {
     showAlert('Failed to delete photo')
     return
@@ -141,11 +154,18 @@ async function deletePhoto(photo: Photo) {
   <div class="d-flex flex-column ga-4">
     <div class="d-flex align-center justify-space-between">
       <span class="text-body-large">Photos</span>
-      <v-btn size="small" color="primary" :prepend-icon="mdiImagePlus" :loading="uploading" @click="triggerFileInput">
+      <v-btn
+        size="small" color="primary" :prepend-icon="mdiImagePlus" :loading="uploading" :disabled="offline"
+        @click="triggerFileInput"
+      >
         Add Photos
       </v-btn>
       <input ref="fileInput" type="file" accept="image/*" multiple hidden @change="onFilesSelected">
     </div>
+
+    <p v-if="offline" class="text-body-small text-medium-emphasis">
+      Adding photos needs a connection.
+    </p>
 
     <v-skeleton-loader v-if="loading" type="image" />
 

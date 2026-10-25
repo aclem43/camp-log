@@ -3,10 +3,12 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { remult } from 'remult'
 import { mdiCloseCircle, mdiDelete, mdiEye, mdiSync } from '@mdi/js'
 import { Location } from '@/shared/models/Location'
+import LoadError from '@/components/LoadError.vue'
 import { getUser } from '@/scripts/user'
+import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
-import { pendingItems, removePending, retryPending } from '@/scripts/outbox'
-import { syncOutbox } from '@/scripts/sync'
+import { describeFailure, pendingItems, removePending, resolvePendingLocation } from '@/scripts/outbox'
+import { retrySync } from '@/scripts/sync'
 
 interface PendingLocationRow {
   pending: true
@@ -21,9 +23,22 @@ interface PendingLocationRow {
 type LocationRow = (Location & { pending?: undefined }) | PendingLocationRow
 
 const locations = ref<Location[]>([])
+const loading = ref(true)
+const loadError = ref(false)
+const deletingId = ref<number | null>(null)
 const user = getUser()
 async function loadLocations() {
-  locations.value = await remult.repo(Location).find({ where: { user: user.value! }, orderBy: { name: 'asc' } })
+  loading.value = true
+  loadError.value = false
+  try {
+    locations.value = await remult.repo(Location).find({ where: { user: user.value! }, orderBy: { name: 'asc' } })
+  }
+  catch {
+    loadError.value = true
+  }
+  finally {
+    loading.value = false
+  }
 }
 
 const pendingLocationRows = computed<PendingLocationRow[]>(() => pendingItems.value
@@ -42,9 +57,10 @@ const pendingLocationRows = computed<PendingLocationRow[]>(() => pendingItems.va
 const rows = computed<LocationRow[]>(() => [...pendingLocationRows.value, ...locations.value])
 
 async function discardPending(id: string) {
-  const confirmed = await askConfirm('Discard this unsynced location? It will be lost.', { confirmText: 'Discard' })
+  const confirmed = await askConfirm('Discard this unsynced location? It will be lost, and unsynced logs won’t link to it.', { confirmText: 'Discard' })
   if (!confirmed)
     return
+  await resolvePendingLocation(id, null)
   await removePending(id)
 }
 
@@ -61,8 +77,18 @@ async function deleteLocation(location: Location) {
   const confirmed = await askConfirm('Are you sure you want to delete this location? Its photos will be deleted too, and logs will no longer link to it.', { confirmText: 'Delete' })
   if (!confirmed)
     return
-  await remult.repo(Location).delete(location)
-  await loadLocations()
+  deletingId.value = location.id
+  try {
+    await remult.repo(Location).delete(location)
+    showAlert('Location deleted')
+    await loadLocations()
+  }
+  catch (err) {
+    showAlert(describeFailure('delete location', err))
+  }
+  finally {
+    deletingId.value = null
+  }
 }
 </script>
 
@@ -81,8 +107,10 @@ async function deleteLocation(location: Location) {
             >
               Add Location
             </v-btn>
+            <LoadError v-if="loadError" what="your locations" class="mt-4" @retry="loadLocations" />
             <v-data-table
               density="compact"
+              :loading="loading"
               :headers="[
                 { title: 'Name', value: 'name', sortable: true },
                 { title: 'Nicknames', value: 'nicknames', sortable: false },
@@ -115,7 +143,7 @@ async function deleteLocation(location: Location) {
                   <v-btn
                     v-if="item.pendingStatus === 'failed'"
                     density="compact" color="primary" title="Retry sync"
-                    @click="retryPending(item.pendingId); syncOutbox()"
+                    @click="retrySync(item.pendingId)"
                   >
                     <v-icon :icon="mdiSync" />
                   </v-btn>
@@ -127,7 +155,7 @@ async function deleteLocation(location: Location) {
                   <v-btn density="compact" color="primary" :to="`/location/${item.id}`">
                     <v-icon :icon="mdiEye" />
                   </v-btn>
-                  <v-btn density="compact" color="error" @click="deleteLocation(item)">
+                  <v-btn density="compact" color="error" :loading="deletingId === item.id" @click="deleteLocation(item)">
                     <v-icon :icon="mdiDelete" />
                   </v-btn>
                 </div>

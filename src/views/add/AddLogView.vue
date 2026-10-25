@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { mdiCloud, mdiMapMarker } from '@mdi/js'
 import { remult } from 'remult'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { useDisplay } from 'vuetify'
 import router from '@/router'
 import { Location } from '@/shared/models/Location'
 import DatePicker from '@/components/date-picker/DatePicker.vue'
+import LoadError from '@/components/LoadError.vue'
 import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
 import type { Log } from '@/shared/models/Log'
 import { LogController, type LogInput } from '@/shared/controllers/LogController'
 import { showAlert } from '@/scripts/alert'
-import { isNetworkError, queueMutation, serverErrorMessage } from '@/scripts/outbox'
+import { startOfDay } from '@/scripts/dates'
+import { isNetworkError, pendingItems, queueMutation, serverErrorMessage } from '@/scripts/outbox'
+import { syncOutbox } from '@/scripts/sync'
 import { getUser } from '@/scripts/user'
 
 const log = ref<Omit<Log, 'id' >>({
@@ -19,15 +22,35 @@ const log = ref<Omit<Log, 'id' >>({
   description: '',
   weather: '',
   terrainId: '',
-  dateStart: new Date(),
+  dateStart: startOfDay(new Date()),
   // "One Day" starts unticked, so the End Date picker is showing.
-  dateEnd: new Date(),
+  dateEnd: startOfDay(new Date()),
 })
 
 const user = getUser()
 const { mobile } = useDisplay()
+// Locations saved offline that haven't synced yet can be picked too - their
+// id is their outbox id, and the log then waits in the outbox for them.
+interface LocationOption {
+  id: number | string
+  name: string
+  pending?: true
+}
+
 const locations = ref<Location[]>([])
-const selectedLocations = ref<Location[]>([])
+const selectedLocations = ref<LocationOption[]>([])
+const locationSearch = ref('')
+
+const locationOptions = computed<LocationOption[]>(() => {
+  const query = locationSearch.value.trim().toLowerCase()
+  const pending = pendingItems.value
+    .filter(item => item.entity === 'location')
+    .map(item => ({ id: item.id, name: (item.payload.name as string) || 'Unnamed campsite' }))
+    .filter(option => !query || option.name.toLowerCase().includes(query))
+    .map(option => ({ ...option, name: `${option.name} (not synced yet)`, pending: true as const }))
+  return [...pending, ...locations.value]
+})
+
 const oneDay = ref(false)
 const saving = ref(false)
 
@@ -42,27 +65,55 @@ const selectedActivities = ref<{ template: ActivityTemplate, value?: number }[]>
 const currentlySelectedActivity = ref<ActivityTemplate | null>(null)
 
 const activities = ref<ActivityTemplate[]>([])
+const loadError = ref(false)
 
 const locationRepo = remult.repo(Location)
 
+let searchId = 0
+
 async function searchLocations(query: string) {
-  locations.value = await locationRepo.find({
-    where: {
-      user: user.value!,
-      ...(query
-        ? { $or: [{ name: { $contains: query } }, { nicknames: { $contains: query } }] }
-        : {}),
-    },
-    limit: 10,
-  })
+  const requestToken = ++searchId
+  try {
+    const found = await locationRepo.find({
+      where: {
+        user: user.value!,
+        ...(query
+          ? { $or: [{ name: { $contains: query } }, { nicknames: { $contains: query } }] }
+          : {}),
+      },
+      limit: 10,
+    })
+    if (requestToken === searchId)
+      locations.value = found
+  }
+  catch {
+    // offline - keep the options already listed
+  }
 }
 
 const debouncedSearchLocations = useDebounceFn(searchLocations, 300)
 
-onMounted(async () => {
-  await searchLocations('')
-  activities.value = await remult.repo(ActivityTemplate).find({ where: { user: user.value! }, orderBy: { name: 'asc' } })
-})
+function onLocationSearch(query: string | null) {
+  locationSearch.value = query ?? ''
+  debouncedSearchLocations(locationSearch.value)
+}
+
+async function load() {
+  loadError.value = false
+  try {
+    const [found, templates] = await Promise.all([
+      locationRepo.find({ where: { user: user.value! }, limit: 10 }),
+      remult.repo(ActivityTemplate).find({ where: { user: user.value! }, orderBy: { name: 'asc' } }),
+    ])
+    locations.value = found
+    activities.value = templates
+  }
+  catch {
+    loadError.value = true
+  }
+}
+
+onMounted(load)
 
 const checkIncludesActivity = (activity: ActivityTemplate) => selectedActivities.value.some(a => a.template.id === activity.id)
 
@@ -74,15 +125,19 @@ function addActivities() {
 function removeActivity(activity: { template: ActivityTemplate, value?: number }) {
   selectedActivities.value = selectedActivities.value.filter(a => a.template.id !== activity.template.id)
 }
-function buildInput(): LogInput {
+type QueuedLogInput = LogInput & { pendingLocationIds?: string[] }
+
+function buildInput(): QueuedLogInput {
+  const pendingLocationIds = selectedLocations.value.filter(l => l.pending).map(l => String(l.id))
   return {
     name: log.value.name,
     description: log.value.description,
     weather: log.value.weather,
-    dateStart: log.value.dateStart,
-    dateEnd: log.value.dateEnd,
-    locationIds: selectedLocations.value.map(l => l.id),
+    dateStart: startOfDay(log.value.dateStart),
+    dateEnd: log.value.dateEnd && startOfDay(log.value.dateEnd),
+    locationIds: selectedLocations.value.filter(l => !l.pending).map(l => Number(l.id)),
     activities: selectedActivities.value.map(a => ({ templateId: a.template.id, value: Number(a.value) || 0 })),
+    ...(pendingLocationIds.length ? { pendingLocationIds } : {}),
   }
 }
 
@@ -91,7 +146,7 @@ async function addLog() {
     showAlert('Name and Start Date are required')
     return
   }
-  if (log.value.dateEnd && log.value.dateEnd < log.value.dateStart) {
+  if (log.value.dateEnd && startOfDay(log.value.dateEnd) < startOfDay(log.value.dateStart)) {
     showAlert('End Date can’t be before the Start Date')
     return
   }
@@ -105,6 +160,15 @@ async function addLog() {
   try {
     if (!navigator.onLine) {
       await queueLogOffline(input)
+      return
+    }
+    // Can't be created until its new location exists on the server - the
+    // outbox syncs them in order.
+    if (input.pendingLocationIds) {
+      await queueMutation('log', { ...input })
+      syncOutbox()
+      showAlert('Log saved — it will sync once its new location has.')
+      router.push({ name: 'logs' })
       return
     }
 
@@ -125,7 +189,7 @@ async function addLog() {
   }
 }
 
-async function queueLogOffline(input: LogInput) {
+async function queueLogOffline(input: QueuedLogInput) {
   await queueMutation('log', { ...input })
   showAlert('Saved offline — will sync when you\'re back online.')
   router.push({ name: 'logs' })
@@ -140,6 +204,7 @@ async function queueLogOffline(input: LogInput) {
           Add New Log
         </v-card-title>
         <v-card-text>
+          <LoadError v-if="loadError" what="your locations and activities" class="mb-4" @retry="load" />
           <v-form @submit.prevent="addLog">
             <v-text-field
               v-model="log.name"
@@ -159,7 +224,7 @@ async function queueLogOffline(input: LogInput) {
               v-model="selectedLocations"
               label="Locations"
               variant="solo-filled"
-              :items="locations"
+              :items="locationOptions"
               :prepend-inner-icon="mdiMapMarker"
               item-title="name"
               item-value="id"
@@ -168,7 +233,7 @@ async function queueLogOffline(input: LogInput) {
               closable-chips
               return-object
               no-filter
-              @update:search="debouncedSearchLocations"
+              @update:search="onLocationSearch"
             />
             <v-text-field
               v-model="log.weather"

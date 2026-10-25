@@ -6,6 +6,7 @@ import { LControlLayers, LIcon, LLayerGroup, LMap, LMarker, LPopup, LTileLayer }
 import { computed, onActivated, ref } from 'vue'
 import { remult } from 'remult'
 import { useRoute } from 'vue-router'
+import LoadError from '@/components/LoadError.vue'
 import { getUser } from '@/scripts/user'
 import { Location, campTypes, campTypesToColor, campTypesToText, type campTypesType } from '@/shared/models/Location'
 import { LogLocation } from '@/shared/models/LogLocation'
@@ -22,6 +23,7 @@ const locations = ref<Location[]>([])
 const locationIdsWithLogs = ref<Set<number>>(new Set())
 const onlyWithLogs = ref(false)
 const onlyCampgrounds = ref(false)
+const loadError = ref(false)
 const locationRepo = remult.repo(Location)
 const logLocationRepo = remult.repo(LogLocation)
 const user = getUser()
@@ -35,11 +37,20 @@ const visibleLocations = computed(() => {
   return result
 })
 
-onActivated(async () => {
-  const [locs, links] = await Promise.all([
-    locationRepo.find({ where: { user: user.value! } }),
-    logLocationRepo.find({ where: { user: user.value! }, include: { location: true } }),
-  ])
+async function load() {
+  loadError.value = false
+  let locs: Location[]
+  let links: LogLocation[]
+  try {
+    [locs, links] = await Promise.all([
+      locationRepo.find({ where: { user: user.value! } }),
+      logLocationRepo.find({ where: { user: user.value! }, include: { location: true } }),
+    ])
+  }
+  catch {
+    loadError.value = true
+    return
+  }
   locations.value = locs.filter(l => l.latitude !== 0 && l.longitude !== 0)
   locationIdsWithLogs.value = new Set(links.filter(link => link.location).map(link => link.location!.id))
 
@@ -57,7 +68,9 @@ onActivated(async () => {
     if (locations.value.length)
       center.value = [locations.value[0].latitude!, locations.value[0].longitude!]
   }
-})
+}
+
+onActivated(load)
 </script>
 
 <template>
@@ -111,6 +124,8 @@ onActivated(async () => {
         </LMarker>
       </LLayerGroup>
     </LMap>
+
+    <LoadError v-if="loadError" what="your locations" class="map-error" @retry="load" />
 
     <div class="map-legend">
       <v-switch
@@ -174,6 +189,14 @@ onActivated(async () => {
 .location-pin-focused {
   border-color: #ffeb3b;
   box-shadow: 0 0 0 4px rgba(255, 235, 59, 0.5), 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.map-error {
+  position: absolute;
+  top: 12px;
+  left: 56px;
+  right: 56px;
+  z-index: 1000;
 }
 
 .map-legend {

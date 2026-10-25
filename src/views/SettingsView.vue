@@ -4,10 +4,12 @@ import { computed, onMounted, ref, watch } from 'vue'
 import changelogRaw from '../../CHANGELOG.md?raw'
 import type { UnitPreference } from '@/shared/models/auth/User'
 import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
+import LoadError from '@/components/LoadError.vue'
 import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
 import { darkTheme } from '@/scripts/theme'
-import { pendingItems, serverErrorMessage } from '@/scripts/outbox'
+import { offline } from '@/scripts/connectivity'
+import { describeFailure, pendingItems } from '@/scripts/outbox'
 import { confirmLogOut, deactivateAccount, getUser, updateProfile } from '@/scripts/user'
 
 const activityRepo = remult.repo(ActivityTemplate)
@@ -20,8 +22,15 @@ const activity = ref<Omit<ActivityTemplate, 'id'>>({
   unit: '',
 })
 const user = getUser()
+const activitiesError = ref(false)
 async function loadActivities() {
-  activityTemplates.value = await activityRepo.find({ where: { user: user.value! } })
+  activitiesError.value = false
+  try {
+    activityTemplates.value = await activityRepo.find({ where: { user: user.value! } })
+  }
+  catch {
+    activitiesError.value = true
+  }
 }
 
 const version = ref('Loading')
@@ -81,9 +90,14 @@ async function removeActivity(activity: ActivityTemplate) {
   const confirmed = await askConfirm('Are you sure you want to remove this activity? Every value logged for it will be deleted too.', { confirmText: 'Remove' })
   if (!confirmed)
     return
-  await activityRepo.delete(activity.id)
-  showAlert('Activity removed successfully')
-  await loadActivities()
+  try {
+    await activityRepo.delete(activity.id)
+    showAlert('Activity removed successfully')
+    await loadActivities()
+  }
+  catch (err) {
+    showAlert(describeFailure('remove activity', err))
+  }
 }
 
 const addingActivity = ref(false)
@@ -102,8 +116,7 @@ async function addActivity() {
     await loadActivities()
   }
   catch (err) {
-    const message = serverErrorMessage(err)
-    showAlert(message ? `Failed to add activity: ${message}` : 'Failed to add activity. Please check your connection and try again.')
+    showAlert(describeFailure('add activity', err))
   }
   finally {
     addingActivity.value = false
@@ -148,8 +161,35 @@ async function handleDeactivate() {
   await deactivateAccount()
 }
 
-function exportData() {
-  window.location.href = '/api/export-data'
+// Fetched rather than navigated to, so a failure (no signal, say) shows a
+// message instead of leaving the PWA on a browser error page.
+const exporting = ref(false)
+async function exportData() {
+  if (offline.value) {
+    showAlert('Exporting needs a connection. Try again when you’re back online.')
+    return
+  }
+  exporting.value = true
+  try {
+    const response = await fetch('/api/export-data')
+    if (!response.ok) {
+      showAlert('Failed to export data. Please try again.')
+      return
+    }
+    const filename = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'camp-log-export.json'
+    const url = URL.createObjectURL(await response.blob())
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+  catch (err) {
+    showAlert(describeFailure('export data', err))
+  }
+  finally {
+    exporting.value = false
+  }
 }
 
 const importFile = ref<File | null>(null)
@@ -162,7 +202,14 @@ async function importData() {
   importing.value = true
   try {
     const text = await importFile.value.text()
-    const parsed = JSON.parse(text)
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(text)
+    }
+    catch {
+      showAlert('That file isn’t a Camp Log export (it isn’t valid JSON).')
+      return
+    }
     const response = await fetch('/api/import-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -182,8 +229,8 @@ async function importData() {
     importFile.value = null
     await loadActivities()
   }
-  catch {
-    showAlert('Invalid export file')
+  catch (err) {
+    showAlert(describeFailure('import data', err))
   }
   finally {
     importing.value = false
@@ -253,6 +300,7 @@ async function importData() {
                     <v-list-subheader>
                       Current Activity Templates
                     </v-list-subheader>
+                    <LoadError v-if="activitiesError" what="your activity templates" @retry="loadActivities" />
                     <v-list-item v-for="act in activityTemplates" :key="act.id">
                       <v-list-item-title>
                         {{ act.name }}
@@ -290,7 +338,7 @@ async function importData() {
                       <p class="mb-2">
                         Export all of your logs, locations, and activity templates as a JSON file.
                       </p>
-                      <v-btn color="primary" @click="exportData">
+                      <v-btn color="primary" :loading="exporting" @click="exportData">
                         Export Data
                       </v-btn>
                     </div>

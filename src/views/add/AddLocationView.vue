@@ -6,7 +6,8 @@ import { computed, ref, toRaw, watch } from 'vue'
 import 'leaflet/dist/leaflet.css'
 import router from '@/router'
 import { showAlert } from '@/scripts/alert'
-import { isNetworkError, queueMutation } from '@/scripts/outbox'
+import { offline } from '@/scripts/connectivity'
+import { describeFailure, isNetworkError, queueMutation } from '@/scripts/outbox'
 import { getUser } from '@/scripts/user'
 import { Location, campTypes, campTypesToText, type campTypesType } from '@/shared/models/Location'
 
@@ -44,7 +45,7 @@ const hasPin = computed(() => location.value.latitude !== 0 || location.value.lo
 const markerLatLng = computed<LatLngTuple>(() => [location.value.latitude ?? 0, location.value.longitude ?? 0])
 
 const findDisabled = computed(() => {
-  if (findingAddress.value)
+  if (findingAddress.value || offline.value)
     return true
   return location.value.address.length === 0
 })
@@ -98,8 +99,8 @@ async function findAddress() {
     applyCoordinates(result.latitude, result.longitude)
     applyGeocodeInfo(result.info)
   }
-  catch {
-    showAlert('Failed to find address')
+  catch (err) {
+    showAlert(describeFailure('find address', err))
   }
   finally {
     findingAddress.value = false
@@ -147,10 +148,16 @@ function useCurrentLocation() {
       await reverseGeocode(position.coords.latitude, position.coords.longitude)
       findingCurrentLocation.value = false
     },
-    () => {
-      showAlert('Unable to retrieve your location')
+    (err) => {
+      if (err.code === err.PERMISSION_DENIED)
+        showAlert('Location access is blocked. Allow it for this site in your browser settings, or place the pin on the map.')
+      else if (err.code === err.TIMEOUT)
+        showAlert('Couldn’t get a GPS fix in time. Try again with a clearer view of the sky, or place the pin on the map.')
+      else
+        showAlert('Couldn’t get a GPS fix. Try again, or place the pin on the map.')
       findingCurrentLocation.value = false
     },
+    { enableHighAccuracy: true, timeout: 20_000, maximumAge: 60_000 },
   )
 }
 
@@ -259,7 +266,7 @@ async function queueLocationOffline() {
           <div class="d-flex flex-column ga-6">
             <v-text-field v-model="location.name" hide-details label="Name" required variant="solo-filled" />
             <v-combobox
-              v-model="nicknamesArray" hide-details label="Nicknames" multiple chips closable-chips
+              v-model="nicknamesArray" label="Nicknames" multiple chips closable-chips
               variant="solo-filled" hint="Alternate names to help you find this place later" persistent-hint
             />
             <v-textarea v-model="location.notes" hide-details label="Notes" required variant="solo-filled" />
@@ -290,17 +297,19 @@ async function queueLocationOffline() {
               density="compact"
             />
 
-            <div class="location-map" :class="{ 'location-map--readonly': !showMapPicker }">
-              <LMap v-model:zoom="mapZoom" :center="mapCenter" @ready="onMapReady">
-                <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" layer-type="base" name="OpenStreetMap" />
-                <LMarker v-if="hasPin" :lat-lng="markerLatLng" :draggable="showMapPicker" @update:lat-lng="onMarkerMove">
-                  <LIcon class-name="location-marker-icon" :icon-size="[30, 30]" :icon-anchor="[15, 15]">
-                    <div class="location-pin">
-                      <svg viewBox="0 0 24 24"><path :d="mdiMapMarker" /></svg>
-                    </div>
-                  </LIcon>
-                </LMarker>
-              </LMap>
+            <div>
+              <div class="location-map" :class="{ 'location-map--readonly': !showMapPicker }">
+                <LMap v-model:zoom="mapZoom" :center="mapCenter" @ready="onMapReady">
+                  <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" layer-type="base" name="OpenStreetMap" />
+                  <LMarker v-if="hasPin" :lat-lng="markerLatLng" :draggable="showMapPicker" @update:lat-lng="onMarkerMove">
+                    <LIcon class-name="location-marker-icon" :icon-size="[30, 30]" :icon-anchor="[15, 15]">
+                      <div class="location-pin">
+                        <svg viewBox="0 0 24 24"><path :d="mdiMapMarker" /></svg>
+                      </div>
+                    </LIcon>
+                  </LMarker>
+                </LMap>
+              </div>
               <div class="map-hint">
                 {{ showMapPicker ? 'Click the map or drag the pin to fine-tune the location' : 'View only — enable editing to place or move the pin' }}
               </div>

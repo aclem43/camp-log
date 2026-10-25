@@ -4,7 +4,7 @@ import { createAuthClient } from 'better-auth/vue'
 import { showAlert } from './alert'
 import { askConfirm } from './confirm'
 import { offline } from './connectivity'
-import { clearOutbox, pendingItems } from './outbox'
+import { clearOutbox, describeFailure, pendingItems } from './outbox'
 import type { UnitPreference } from '@/shared/models/auth/User'
 import router from '@/router'
 import { MIN_PASSWORD_LENGTH, User } from '@/shared/models/auth/User'
@@ -207,11 +207,18 @@ export async function confirmLogOut() {
 }
 
 export async function updateProfile(data: { name: string, unitPreference: UnitPreference }) {
-  const response = await fetch('/api/profile', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
+  let response: Response
+  try {
+    response = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+  }
+  catch (err) {
+    showAlert(describeFailure('update profile', err))
+    return false
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => null)
     showAlert(body?.message ?? 'Failed to update profile')
@@ -226,7 +233,14 @@ export async function updateProfile(data: { name: string, unitPreference: UnitPr
 }
 
 export async function deactivateAccount() {
-  const response = await fetch('/api/deactivate-account', { method: 'POST' })
+  let response: Response
+  try {
+    response = await fetch('/api/deactivate-account', { method: 'POST' })
+  }
+  catch (err) {
+    showAlert(describeFailure('deactivate account', err))
+    return false
+  }
   if (!response.ok) {
     showAlert('Failed to deactivate account')
     return false

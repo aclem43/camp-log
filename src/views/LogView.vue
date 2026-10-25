@@ -10,11 +10,13 @@ import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
 import { LogLocation } from '@/shared/models/LogLocation'
 import { Location } from '@/shared/models/Location'
 import { LogController } from '@/shared/controllers/LogController'
+import LoadError from '@/components/LoadError.vue'
 import PhotoGallery from '@/components/PhotoGallery.vue'
 import DatePicker from '@/components/date-picker/DatePicker.vue'
 import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
-import { serverErrorMessage } from '@/scripts/outbox'
+import { startOfDay } from '@/scripts/dates'
+import { describeFailure } from '@/scripts/outbox'
 import { getUser } from '@/scripts/user'
 import router from '@/router'
 
@@ -58,22 +60,35 @@ watch(oneDay, (value) => {
     log.value.dateEnd ??= new Date(log.value.dateStart)
 })
 
+let searchId = 0
+
 async function searchLocations(query: string) {
-  locationOptions.value = await locationRepo.find({
-    where: {
-      user: user.value!,
-      ...(query
-        ? { $or: [{ name: { $contains: query } }, { nicknames: { $contains: query } }] }
-        : {}),
-    },
-    limit: 10,
-  })
+  const requestToken = ++searchId
+  try {
+    const found = await locationRepo.find({
+      where: {
+        user: user.value!,
+        ...(query
+          ? { $or: [{ name: { $contains: query } }, { nicknames: { $contains: query } }] }
+          : {}),
+      },
+      limit: 10,
+    })
+    if (requestToken === searchId)
+      locationOptions.value = found
+  }
+  catch {
+    // offline - keep the options already listed (the selected locations at least)
+  }
 }
 
 const debouncedSearchLocations = useDebounceFn(searchLocations, 300)
 
-async function load() {
-  loading.value = true
+// `refresh` reloads in place after a save, keeping the form (and scroll
+// position) on screen rather than swapping it for the skeleton.
+async function load(refresh = false) {
+  if (!refresh)
+    loading.value = true
   loadError.value = false
   try {
     log.value = (await logRepo.findOne({ where: { id: props.id, user: user.value! } })) ?? null
@@ -101,7 +116,10 @@ async function load() {
     locationOptions.value = selectedLocations.value.slice()
   }
   catch {
-    loadError.value = true
+    // After a save the edits are already stored, so a failed refresh just
+    // leaves the form as it is.
+    if (!refresh)
+      loadError.value = true
   }
   finally {
     loading.value = false
@@ -131,7 +149,7 @@ async function save() {
     showAlert('Start date is required')
     return
   }
-  if (log.value.dateEnd && log.value.dateEnd < log.value.dateStart) {
+  if (log.value.dateEnd && startOfDay(log.value.dateEnd) < startOfDay(log.value.dateStart)) {
     showAlert('End date can’t be before the start date')
     return
   }
@@ -146,17 +164,16 @@ async function save() {
       name: log.value.name,
       description: log.value.description,
       weather: log.value.weather,
-      dateStart: log.value.dateStart,
-      dateEnd: log.value.dateEnd,
+      dateStart: startOfDay(log.value.dateStart),
+      dateEnd: log.value.dateEnd && startOfDay(log.value.dateEnd),
       locationIds: selectedLocations.value.map(l => l.id),
       activities: activityRows.value.map(r => ({ templateId: r.template.id, value: Number(r.value) || 0 })),
     })
     showAlert('Log updated')
-    await load()
+    await load(true)
   }
   catch (err) {
-    const message = serverErrorMessage(err)
-    showAlert(message ? `Failed to update log: ${message}` : 'Failed to update log. Please check your connection and try again.')
+    showAlert(describeFailure('update log', err))
   }
   finally {
     saving.value = false
@@ -177,15 +194,15 @@ async function deleteLog() {
     showAlert('Log deleted')
     router.push({ name: 'logs' })
   }
-  catch {
-    showAlert('Failed to delete log')
+  catch (err) {
+    showAlert(describeFailure('delete log', err))
   }
   finally {
     deleting.value = false
   }
 }
 
-onMounted(load)
+onMounted(() => load())
 </script>
 
 <template>
@@ -197,19 +214,7 @@ onMounted(load)
         </v-card-text>
       </v-card>
 
-      <v-card v-else-if="loadError">
-        <v-card-title>
-          Failed to load log
-        </v-card-title>
-        <v-card-text>
-          <p class="mb-4">
-            The request didn't go through. If you're using an ad blocker or privacy extension, try allowing this site, then retry.
-          </p>
-          <v-btn color="primary" @click="load">
-            Retry
-          </v-btn>
-        </v-card-text>
-      </v-card>
+      <LoadError v-else-if="loadError" what="this log" @retry="load()" />
 
       <v-card v-else-if="!log">
         <v-card-title>

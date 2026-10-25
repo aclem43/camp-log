@@ -5,6 +5,7 @@ import { ref, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { Log } from '@/shared/models/Log'
 import { Location, campTypes, campTypesToColor, campTypesToText, type campTypesType } from '@/shared/models/Location'
+import LoadError from '@/components/LoadError.vue'
 import { getUser } from '@/scripts/user'
 
 const DEFAULT_LIMIT = 10
@@ -25,6 +26,7 @@ interface SearchResult {
 
 const searchResults = ref<SearchResult[]>([])
 const loading = ref<boolean>(false)
+const loadError = ref(false)
 
 const logRepo = remult.repo(Log)
 const locationRepo = remult.repo(Location)
@@ -95,14 +97,26 @@ async function searchQuery() {
   const includeLogs = selectedTypes.value.includes('log')
   const includeLocations = selectedTypes.value.includes('location')
 
-  const [logs, locations] = await Promise.all([
-    includeLogs ? logRepo.find({ limit, where: logWhere(query) }) : Promise.resolve([]),
-    includeLocations ? locationRepo.find({ limit, where: locationWhere(query) }) : Promise.resolve([]),
-  ])
+  let logs: Log[]
+  let locations: Location[]
+  try {
+    [logs, locations] = await Promise.all([
+      includeLogs ? logRepo.find({ limit, where: logWhere(query) }) : Promise.resolve([]),
+      includeLocations ? locationRepo.find({ limit, where: locationWhere(query) }) : Promise.resolve([]),
+    ])
+  }
+  catch {
+    if (requestToken === requestId) {
+      loadError.value = true
+      loading.value = false
+    }
+    return
+  }
 
   if (requestToken !== requestId)
     return // a newer search superseded this one
 
+  loadError.value = false
   const results = [...logs.map(logToSearchResult), ...locations.map(locationToSearchResult)]
   results.sort((a, b) => a.title.localeCompare(b.title))
   searchResults.value = results
@@ -152,7 +166,10 @@ watch(selectedTypes, () => searchQuery(), { deep: true, immediate: true })
       <v-divider class="mb-2" />
       <v-card>
         <v-list :loading="loading">
-          <template v-if="loading">
+          <v-list-item v-if="loadError && !loading">
+            <LoadError what="search results" @retry="searchQuery" />
+          </v-list-item>
+          <template v-else-if="loading">
             <v-skeleton-loader v-for="x in 4" :key="x" type="list-item" />
           </template>
           <template v-else>
