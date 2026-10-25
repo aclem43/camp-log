@@ -101,59 +101,59 @@ These fail silently, with unhandled rejections.
 
 ### Screen readers and keyboard
 
-- [ ] Icon-only buttons with no accessible name:
+- [x] Icon-only buttons with no accessible name:
   - PhotoGallery delete [PhotoGallery.vue:164](src/components/PhotoGallery.vue#L164) and lightbox close [PhotoGallery.vue:181](src/components/PhotoGallery.vue#L181)
   - Locations View/Delete [LocationsView.vue:127](src/views/LocationsView.vue#L127), [130](src/views/LocationsView.vue#L130)
   - Back buttons [LogView.vue:219](src/views/LogView.vue#L219) · [LocationView.vue:162](src/views/LocationView.vue#L162)
-- [ ] The photo thumbnail is a `<div @click>`, so the keyboard can't open it. [PhotoGallery.vue:162](src/components/PhotoGallery.vue#L162)
-- [ ] Photos have no `alt`. [PhotoGallery.vue:163](src/components/PhotoGallery.vue#L163) · [PhotoGallery.vue:179](src/components/PhotoGallery.vue#L179)
-- [ ] Marker `<svg>` is missing `aria-hidden="true"`. [LocationView.vue:199](src/views/LocationView.vue#L199) · [MapView.vue:102](src/views/MapView.vue#L102) · [AddLocationView.vue:294](src/views/add/AddLocationView.vue#L294)
-- [ ] The offline/sync banner isn't a live region; add `role="status"`. [OnlineStatusBanner.vue:31](src/components/OnlineStatusBanner.vue#L31)
-- [ ] `required` is set on fields that aren't required, so screen readers announce them as required:
+- [x] The photo thumbnail is a `<div @click>`, so the keyboard can't open it. [PhotoGallery.vue:162](src/components/PhotoGallery.vue#L162)
+- [x] Photos have no `alt`. [PhotoGallery.vue:163](src/components/PhotoGallery.vue#L163) · [PhotoGallery.vue:179](src/components/PhotoGallery.vue#L179)
+- [x] Marker `<svg>` is missing `aria-hidden="true"`. [LocationView.vue:199](src/views/LocationView.vue#L199) · [MapView.vue:102](src/views/MapView.vue#L102) · [AddLocationView.vue:294](src/views/add/AddLocationView.vue#L294)
+- [x] The offline/sync banner isn't a live region; add `role="status"`. [OnlineStatusBanner.vue:31](src/components/OnlineStatusBanner.vue#L31)
+- [x] `required` is set on fields that aren't required, so screen readers announce them as required:
   - Notes/Type/Address: [LocationView.vue:174](src/views/LocationView.vue#L174), 176, 181 · [AddLocationView.vue:260](src/views/add/AddLocationView.vue#L260), 262, 275
   - Description/Weather: [AddLogView.vue:149](src/views/add/AddLogView.vue#L149), 172
-- [ ] Camp type is shown only by colour; the map popup doesn't name it. [MapView.vue:106](src/views/MapView.vue#L106) · [SearchView.vue:142](src/views/SearchView.vue#L142)
-- [ ] An activity value field is labelled by its unit, so it has no label when the unit is empty. Fix: label with the activity name and show the unit as a suffix. [LogView.vue:289](src/views/LogView.vue#L289) · [AddLogView.vue:224](src/views/add/AddLogView.vue#L224)
+- [x] Camp type is shown only by colour; the map popup doesn't name it. [MapView.vue:106](src/views/MapView.vue#L106) · [SearchView.vue:142](src/views/SearchView.vue#L142)
+- [x] An activity value field is labelled by its unit, so it has no label when the unit is empty. Fix: label with the activity name and show the unit as a suffix. [LogView.vue:289](src/views/LogView.vue#L289) · [AddLogView.vue:224](src/views/add/AddLogView.vue#L224)
 
 ### Touch
 
-- [ ] Tap targets under 44 px:
+- [x] Tap targets under 44 px:
   - `size="small"`/`"x-small"` buttons: [OnlineStatusBanner.vue:40](src/components/OnlineStatusBanner.vue#L40) · [PhotoGallery.vue:144](src/components/PhotoGallery.vue#L144), [164](src/components/PhotoGallery.vue#L164) · back buttons [LogView.vue:219](src/views/LogView.vue#L219), [LocationView.vue:162](src/views/LocationView.vue#L162) · [SettingsView.vue:194](src/views/SettingsView.vue#L194) · [ImportLogsView.vue:443](src/views/add/ImportLogsView.vue#L443)
   - `density="compact"` buttons (24 px): [LogsView.vue:193](src/views/LogsView.vue#L193)–206 · [LocationsView.vue:115](src/views/LocationsView.vue#L115)–130 · [SettingsView.vue:249](src/views/SettingsView.vue#L249)
   - `density="compact"` inputs, selects, checkboxes and switches (40 px): [DatePicker.vue:21](src/components/date-picker/DatePicker.vue#L21) · [LogsView.vue:149](src/views/LogsView.vue#L149), 159 · [LogView.vue:249](src/views/LogView.vue#L249), 264 · [AddLogView.vue:177](src/views/add/AddLogView.vue#L177), 193 · [AddLocationView.vue:285](src/views/add/AddLocationView.vue#L285) · [MapView.vue:116](src/views/MapView.vue#L116), 124 · [ImportLogsView.vue:553](src/views/add/ImportLogsView.vue#L553)
   - Compact table rows (36 px): [LocationsView.vue:84](src/views/LocationsView.vue#L84)
-- [ ] The sync-failure reason is only in a hover tooltip, which never shows on touch. [LogsView.vue:185](src/views/LogsView.vue#L185) · [LocationsView.vue:108](src/views/LocationsView.vue#L108)
-- [ ] The map legend is always expanded and covers much of the map on phones; make it collapsible. [MapView.vue:115](src/views/MapView.vue#L115)
-- [ ] Recent campsites and logs on Home aren't links, so tapping one does nothing. [HomeView.vue:103](src/views/HomeView.vue#L103) · [HomeView.vue:135](src/views/HomeView.vue#L135)
-- [ ] `router.back()` leaves the app when the page was opened directly; use `:to`. [LogView.vue:219](src/views/LogView.vue#L219) · [LocationView.vue:162](src/views/LocationView.vue#L162)
+- [x] The sync-failure reason is only in a hover tooltip, which never shows on touch. [LogsView.vue:185](src/views/LogsView.vue#L185) · [LocationsView.vue:108](src/views/LocationsView.vue#L108)
+- [x] The map legend is always expanded and covers much of the map on phones; make it collapsible. [MapView.vue:115](src/views/MapView.vue#L115)
+- [x] Recent campsites and logs on Home aren't links, so tapping one does nothing. [HomeView.vue:103](src/views/HomeView.vue#L103) · [HomeView.vue:135](src/views/HomeView.vue#L135)
+- [x] `router.back()` leaves the app when the page was opened directly; use `:to`. [LogView.vue:219](src/views/LogView.vue#L219) · [LocationView.vue:162](src/views/LocationView.vue#L162)
 
 ### Forms
 
-- [ ] Validation errors only appear in the snackbar, with no inline error and no focus on the first bad field:
+- [x] Validation errors only appear in the snackbar, with no inline error and no focus on the first bad field:
   - Forms: [LogView.vue:122](src/views/LogView.vue#L122) · [AddLogView.vue:88](src/views/add/AddLogView.vue#L88) (also: the name isn't trimmed) · [SettingsView.vue:89](src/views/SettingsView.vue#L89)
   - Register: [RegisterView.vue:13](src/views/user/RegisterView.vue#L13). Also show `MIN_PASSWORD_LENGTH` as a hint up front.
-- [ ] Login and Register submits have no `:loading`, so a double tap sends twice. [LoginView.vue:45](src/views/user/LoginView.vue#L45) · [RegisterView.vue:58](src/views/user/RegisterView.vue#L58)
-- [ ] No guard for unsaved changes on long forms (`onBeforeRouteLeave`): [AddLogView.vue:137](src/views/add/AddLogView.vue#L137) · [AddLocationView.vue:312](src/views/add/AddLocationView.vue#L312) · [LogView.vue:309](src/views/LogView.vue#L309) · [LocationView.vue:214](src/views/LocationView.vue#L214) · [ImportLogsView.vue:595](src/views/add/ImportLogsView.vue#L595)
-- [ ] "Start Over" wipes review progress instantly; use `askConfirm` and `color="warning"`. [ImportLogsView.vue:443](src/views/add/ImportLogsView.vue#L443)
-- [ ] Find shows no progress: it has `:disabled` but no `:loading`. [LocationView.vue:184](src/views/LocationView.vue#L184)
-- [ ] Add Activity silently does nothing when no activity is selected, and there's no hint pointing to Settings when there are no templates. [LogView.vue:275](src/views/LogView.vue#L275) · [AddLogView.vue:204](src/views/add/AddLogView.vue#L204)
+- [x] Login and Register submits have no `:loading`, so a double tap sends twice. [LoginView.vue:45](src/views/user/LoginView.vue#L45) · [RegisterView.vue:58](src/views/user/RegisterView.vue#L58)
+- [x] No guard for unsaved changes on long forms (`onBeforeRouteLeave`): [AddLogView.vue:137](src/views/add/AddLogView.vue#L137) · [AddLocationView.vue:312](src/views/add/AddLocationView.vue#L312) · [LogView.vue:309](src/views/LogView.vue#L309) · [LocationView.vue:214](src/views/LocationView.vue#L214) · [ImportLogsView.vue:595](src/views/add/ImportLogsView.vue#L595)
+- [x] "Start Over" wipes review progress instantly; use `askConfirm` and `color="warning"`. [ImportLogsView.vue:443](src/views/add/ImportLogsView.vue#L443)
+- [x] Find shows no progress: it has `:disabled` but no `:loading`. [LocationView.vue:184](src/views/LocationView.vue#L184)
+- [x] Add Activity silently does nothing when no activity is selected, and there's no hint pointing to Settings when there are no templates. [LogView.vue:275](src/views/LogView.vue#L275) · [AddLogView.vue:204](src/views/add/AddLogView.vue#L204)
 
 ### State in the URL
 
 Put this state in the route query so back and reload keep it:
 
-- [ ] Logs: page, search, sort. [LogsView.vue:107](src/views/LogsView.vue#L107)
-- [ ] Search: query and type filters. Without them, going back from a result clears the search. [SearchView.vue:114](src/views/SearchView.vue#L114)
-- [ ] Import: tab. [ImportView.vue:6](src/views/add/ImportView.vue#L6)
-- [ ] Map: filters. [MapView.vue:116](src/views/MapView.vue#L116)
-- [ ] Locations: page, sort. [LocationsView.vue:84](src/views/LocationsView.vue#L84)
-- [ ] Settings: open panel. [SettingsView.vue:188](src/views/SettingsView.vue#L188)
+- [x] Logs: page, search, sort. [LogsView.vue:107](src/views/LogsView.vue#L107)
+- [x] Search: query and type filters. Without them, going back from a result clears the search. [SearchView.vue:114](src/views/SearchView.vue#L114)
+- [x] Import: tab. [ImportView.vue:6](src/views/add/ImportView.vue#L6)
+- [x] Map: filters. [MapView.vue:116](src/views/MapView.vue#L116)
+- [x] Locations: page, sort. [LocationsView.vue:84](src/views/LocationsView.vue#L84)
+- [x] Settings: open panel. [SettingsView.vue:188](src/views/SettingsView.vue#L188)
 
 ### Performance and visibility outdoors
 
-- [ ] Photo thumbnails load full-size files (up to 2000 px) on mobile data; add a thumbnail endpoint. [PhotoGallery.vue:163](src/components/PhotoGallery.vue#L163)
-- [ ] Unbounded `v-for` over CSV rows; paginate it. [ImportLocationsView.vue:128](src/views/add/ImportLocationsView.vue#L128)
-- [ ] Low-contrast text (small and faded): map hint, 12 px at opacity 0.7 ([LocationView.vue:204](src/views/LocationView.vue#L204), [AddLocationView.vue:299](src/views/add/AddLocationView.vue#L299)); search legend, 13 px at opacity 0.75 ([SearchView.vue:142](src/views/SearchView.vue#L142))
+- [x] Photo thumbnails load full-size files (up to 2000 px) on mobile data; add a thumbnail endpoint. [PhotoGallery.vue:163](src/components/PhotoGallery.vue#L163)
+- [x] Unbounded `v-for` over CSV rows; paginate it. [ImportLocationsView.vue:128](src/views/add/ImportLocationsView.vue#L128)
+- [x] Low-contrast text (small and faded): map hint, 12 px at opacity 0.7 ([LocationView.vue:204](src/views/LocationView.vue#L204), [AddLocationView.vue:299](src/views/add/AddLocationView.vue#L299)); search legend, 13 px at opacity 0.75 ([SearchView.vue:142](src/views/SearchView.vue#L142))
 
 ## P3: polish
 
