@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import { mdiCampfire, mdiMagnify, mdiMapMarker } from '@mdi/js'
 import { remult } from 'remult'
+import type { WritableComputedRef } from 'vue'
 import { ref, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { Log } from '@/shared/models/Log'
 import { Location, campTypes, campTypesToColor, campTypesToText, type campTypesType } from '@/shared/models/Location'
+import LoadError from '@/components/LoadError.vue'
+import { useRouteQuery } from '@/scripts/routeQuery'
 import { getUser } from '@/scripts/user'
 
 const DEFAULT_LIMIT = 10
 const SEARCH_LIMIT = 25
 const LOG_COLOR = '#f57c00'
 
-const search = ref<string>('')
-const selectedTypes = ref<Array<'log' | 'location'>>(['log', 'location'])
+// In the URL, so going back from a result returns to the same search.
+const search = useRouteQuery('q', '')
+const selectedTypes = useRouteQuery('types', ['log', 'location']) as WritableComputedRef<Array<'log' | 'location'>>
 
 interface SearchResult {
   title: string
@@ -25,6 +29,7 @@ interface SearchResult {
 
 const searchResults = ref<SearchResult[]>([])
 const loading = ref<boolean>(false)
+const loadError = ref(false)
 
 const logRepo = remult.repo(Log)
 const locationRepo = remult.repo(Location)
@@ -36,7 +41,7 @@ function logToSearchResult(log: Log): SearchResult {
     : log.dateStart.toLocaleDateString()
   return {
     title: log.name,
-    subtitle,
+    subtitle: `Log · ${subtitle}`,
     icon: mdiCampfire,
     color: LOG_COLOR,
     id: log.id,
@@ -44,8 +49,10 @@ function logToSearchResult(log: Log): SearchResult {
   }
 }
 function locationToSearchResult(location: Location): SearchResult {
-  const subtitle = location.address
+  const place = location.address
     || [location.city, location.state, location.country].filter(Boolean).join(', ')
+  // The type is in words as well as the icon colour.
+  const subtitle = [campTypesToText(location.type), place].filter(Boolean).join(' · ')
   return {
     title: location.name,
     subtitle,
@@ -95,14 +102,26 @@ async function searchQuery() {
   const includeLogs = selectedTypes.value.includes('log')
   const includeLocations = selectedTypes.value.includes('location')
 
-  const [logs, locations] = await Promise.all([
-    includeLogs ? logRepo.find({ limit, where: logWhere(query) }) : Promise.resolve([]),
-    includeLocations ? locationRepo.find({ limit, where: locationWhere(query) }) : Promise.resolve([]),
-  ])
+  let logs: Log[]
+  let locations: Location[]
+  try {
+    [logs, locations] = await Promise.all([
+      includeLogs ? logRepo.find({ limit, where: logWhere(query) }) : Promise.resolve([]),
+      includeLocations ? locationRepo.find({ limit, where: locationWhere(query) }) : Promise.resolve([]),
+    ])
+  }
+  catch {
+    if (requestToken === requestId) {
+      loadError.value = true
+      loading.value = false
+    }
+    return
+  }
 
   if (requestToken !== requestId)
     return // a newer search superseded this one
 
+  loadError.value = false
   const results = [...logs.map(logToSearchResult), ...locations.map(locationToSearchResult)]
   results.sort((a, b) => a.title.localeCompare(b.title))
   searchResults.value = results
@@ -112,7 +131,8 @@ async function searchQuery() {
 const debouncedSearchQuery = useDebounceFn(searchQuery, 500)
 
 watch(search, () => debouncedSearchQuery())
-watch(selectedTypes, () => searchQuery(), { deep: true, immediate: true })
+// Joined, because any query change (typing a search) rebuilds the array.
+watch(() => selectedTypes.value.join(','), () => searchQuery(), { immediate: true })
 </script>
 
 <template>
@@ -152,7 +172,10 @@ watch(selectedTypes, () => searchQuery(), { deep: true, immediate: true })
       <v-divider class="mb-2" />
       <v-card>
         <v-list :loading="loading">
-          <template v-if="loading">
+          <v-list-item v-if="loadError && !loading">
+            <LoadError what="search results" @retry="searchQuery" />
+          </v-list-item>
+          <template v-else-if="loading">
             <v-skeleton-loader v-for="x in 4" :key="x" type="list-item" />
           </template>
           <template v-else>
@@ -187,8 +210,8 @@ watch(selectedTypes, () => searchQuery(), { deep: true, immediate: true })
   align-items: center;
   gap: 6px 16px;
   margin: 4px 0 12px;
-  font-size: 13px;
-  opacity: 0.75;
+  font-size: 14px;
+  opacity: 0.87;
 }
 
 .search-legend-item {

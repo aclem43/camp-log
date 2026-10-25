@@ -61,14 +61,19 @@ router.post(
     req.authUser = remult.user
     next()
   },
-  upload.single('file'),
+  upload.fields([{ name: 'file', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]),
   asyncHandler<RequestWithUser>(async (req, res) => {
     const authUser = req.authUser
     if (!authUser) {
       res.status(401).json({ message: 'Not authenticated' })
       return
     }
-    if (!req.file) {
+    const files = req.files as Record<string, Express.Multer.File[] | undefined> | undefined
+    const file = files?.file?.[0]
+    const thumbnail = files?.thumbnail?.[0]
+    if (!file) {
+      if (thumbnail)
+        await removePhotoFile(thumbnail.filename)
       res.status(400).json({ message: 'No file uploaded' })
       return
     }
@@ -98,22 +103,25 @@ router.post(
           user: { id: authUser.id } as User,
           log,
           location,
-          filename: req.file!.filename,
-          originalName: req.file!.originalname,
+          filename: file.filename,
+          thumbnailFilename: thumbnail?.filename ?? '',
+          originalName: file.originalname,
           caption: typeof caption === 'string' ? caption : '',
         })
 
         res.json(photo)
       }
       catch (err) {
-        await removePhotoFile(req.file!.filename)
+        await removePhotoFile(file.filename)
+        if (thumbnail)
+          await removePhotoFile(thumbnail.filename)
         res.status(400).json({ message: err instanceof Error ? err.message : 'Failed to save photo' })
       }
     }, { dataProvider })
   }),
 )
 
-// Catches errors thrown by upload.single('file') above (bad mimetype, file
+// Catches errors thrown by upload.fields() above (bad mimetype, file
 // too large, missing dir, etc.) - a normal try/catch can't see those since
 // they happen inside multer's own middleware, before our handler runs.
 router.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
@@ -124,22 +132,28 @@ router.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
   res.status(400).json({ message: err instanceof Error ? err.message : 'Upload failed' })
 })
 
-router.get('/photos/:id/file', asyncHandler(async (req, res) => {
-  const authUser = requireUser(res)
-  if (!authUser)
-    return
+function sendPhoto(variant: 'file' | 'thumb') {
+  return asyncHandler(async (req, res) => {
+    const authUser = requireUser(res)
+    if (!authUser)
+      return
 
-  const photo = await remult.repo(Photo).findFirst({ id: Number(req.params.id), user: { $id: authUser.id } })
-  if (!photo) {
-    res.status(404).end()
-    return
-  }
-
-  res.sendFile(photo.filename, { root: uploadsDir }, (err) => {
-    if (err && !res.headersSent)
+    const photo = await remult.repo(Photo).findFirst({ id: Number(req.params.id), user: { $id: authUser.id } })
+    if (!photo) {
       res.status(404).end()
+      return
+    }
+
+    const filename = variant === 'thumb' ? photo.thumbnailFilename || photo.filename : photo.filename
+    res.sendFile(filename, { root: uploadsDir }, (err) => {
+      if (err && !res.headersSent)
+        res.status(404).end()
+    })
   })
-}))
+}
+
+router.get('/photos/:id/file', sendPhoto('file'))
+router.get('/photos/:id/thumb', sendPhoto('thumb'))
 
 router.delete('/photos/:id', asyncHandler(async (req, res) => {
   const authUser = requireUser(res)

@@ -1,0 +1,73 @@
+name: CI
+
+# Lint, type-check and the Playwright e2e suite. Runs on its own for develop
+# and pull requests, and is called by docker-publish.yml so a master push only
+# publishes (and Watchtower only deploys) an image that passed.
+on:
+  push:
+    branches: [develop]
+  pull_request:
+  workflow_call:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: camp-log
+          POSTGRES_PASSWORD: camp-log
+          POSTGRES_DB: camp-log
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_TYPE: postgres
+      DATABASE_URL: postgresql://camp-log:camp-log@localhost:5432/camp-log
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-real
+      BETTER_AUTH_URL: http://localhost:3000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Uses the pnpm version pinned in package.json's packageManager field.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm exec eslint .
+
+      - name: Type-check
+        run: pnpm type-check
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      # playwright.config.ts builds the app and starts the production server
+      # itself, against the postgres service above.
+      - name: E2E tests
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

@@ -5,10 +5,13 @@ import { mdiCloseCircle, mdiDelete, mdiEye, mdiMagnify, mdiSync } from '@mdi/js'
 import { Log } from '@/shared/models/Log'
 import { LogLocation } from '@/shared/models/LogLocation'
 import type { Location } from '@/shared/models/Location'
+import LoadError from '@/components/LoadError.vue'
 import { getUser } from '@/scripts/user'
+import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
-import { pendingItems, removePending, retryPending } from '@/scripts/outbox'
-import { syncOutbox } from '@/scripts/sync'
+import { describeFailure, pendingItems, removePending } from '@/scripts/outbox'
+import { useRouteQuery } from '@/scripts/routeQuery'
+import { retrySync } from '@/scripts/sync'
 
 interface PendingLogRow {
   pending: true
@@ -34,9 +37,12 @@ const sortOptions: { title: string, value: SortOrder }[] = [
 
 const logs = ref<Log[]>([])
 const locationsByLogId = ref<Map<number, Location[]>>(new Map())
-const page = ref(1)
-const search = ref('')
-const sortOrder = ref<SortOrder>('dateDesc')
+const page = useRouteQuery('page', 1)
+const search = useRouteQuery('q', '')
+const sortOrder = useRouteQuery<SortOrder>('sort', 'dateDesc')
+const loading = ref(true)
+const loadError = ref(false)
+const deletingId = ref<number | null>(null)
 
 const logRepo = remult.repo(Log)
 const logLocationRepo = remult.repo(LogLocation)
@@ -48,26 +54,48 @@ function locationsFor(id: number | string) {
 }
 
 async function load() {
-  logs.value = await logRepo.find({ where: { user: user.value! } })
-
-  const links = await logLocationRepo.find({ where: { user: user.value! }, include: { log: true, location: true } })
-  const map = new Map<number, Location[]>()
-  for (const link of links) {
-    if (!link.log || !link.location)
-      continue
-    const existing = map.get(link.log.id) ?? []
-    existing.push(link.location)
-    map.set(link.log.id, existing)
+  loading.value = true
+  loadError.value = false
+  try {
+    const [found, links] = await Promise.all([
+      logRepo.find({ where: { user: user.value! } }),
+      logLocationRepo.find({ where: { user: user.value! }, include: { log: true, location: true } }),
+    ])
+    const map = new Map<number, Location[]>()
+    for (const link of links) {
+      if (!link.log || !link.location)
+        continue
+      const existing = map.get(link.log.id) ?? []
+      existing.push(link.location)
+      map.set(link.log.id, existing)
+    }
+    logs.value = found
+    locationsByLogId.value = map
   }
-  locationsByLogId.value = map
+  catch {
+    loadError.value = true
+  }
+  finally {
+    loading.value = false
+  }
 }
 
 async function deleteLog(log: Log) {
   const confirmed = await askConfirm('Are you sure you want to delete this log? Its activities and photos will be deleted too.', { confirmText: 'Delete' })
   if (!confirmed)
     return
-  await logRepo.delete(log)
-  await load()
+  deletingId.value = log.id
+  try {
+    await logRepo.delete(log)
+    showAlert('Log deleted')
+    await load()
+  }
+  catch (err) {
+    showAlert(describeFailure('delete log', err))
+  }
+  finally {
+    deletingId.value = null
+  }
 }
 
 const pendingLogRows = computed<PendingLogRow[]>(() => pendingItems.value
@@ -81,6 +109,7 @@ const pendingLogRows = computed<PendingLogRow[]>(() => pendingItems.value
     name: (item.payload.name as string) || 'Untitled log',
     description: (item.payload.description as string) || '',
     dateStart: item.payload.dateStart as Date | undefined,
+    dateEnd: item.payload.dateEnd as Date | undefined,
   })))
 
 const allRows = computed<LogRow[]>(() => [...pendingLogRows.value, ...logs.value])
@@ -111,7 +140,8 @@ watch([search, sortOrder], () => {
 })
 
 watch(pageCount, (count) => {
-  if (page.value > count)
+  // Not while loading, or a page from the URL would be lost before the logs arrive.
+  if (!loading.value && page.value > count)
     page.value = count
 })
 
@@ -136,7 +166,7 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
   <v-container>
     <v-col>
       <div class="d-flex flex-column ga-4">
-        <h1 class="text-h5">
+        <h1 class="text-headline-small">
           Logs
         </h1>
 
@@ -146,7 +176,6 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
             label="Filter"
             placeholder="Search name, description, or location"
             variant="solo-filled"
-            density="compact"
             hide-details
             clearable
             :prepend-inner-icon="mdiMagnify"
@@ -156,14 +185,17 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
             v-model="sortOrder"
             label="Sort by"
             variant="solo-filled"
-            density="compact"
             hide-details
             :items="sortOptions"
             style="min-width: 180px; flex: 1 1 180px;"
           />
         </div>
 
-        <v-alert v-if="!allRows.length" type="info" variant="tonal">
+        <LoadError v-if="loadError" what="your logs" @retry="load" />
+        <template v-else-if="loading && !logs.length">
+          <v-skeleton-loader v-for="x in 3" :key="x" type="article" />
+        </template>
+        <v-alert v-else-if="!allRows.length" type="info" variant="tonal">
           No logs yet.
         </v-alert>
         <v-alert v-else-if="!filteredRows.length" type="info" variant="tonal">
@@ -182,7 +214,6 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
             <v-chip
               v-else-if="item.pending && item.pendingStatus === 'failed'"
               size="small" color="error" variant="tonal"
-              :title="item.pendingError"
             >
               Sync failed
             </v-chip>
@@ -190,24 +221,30 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
             <div v-if="item.pending" class="d-flex ga-2">
               <v-btn
                 v-if="item.pendingStatus === 'failed'"
-                density="compact" color="primary" title="Retry sync"
-                @click="retryPending(item.pendingId); syncOutbox()"
+                icon color="primary" title="Retry sync" aria-label="Retry sync"
+                @click="retrySync(item.pendingId)"
               >
                 <v-icon :icon="mdiSync" />
               </v-btn>
-              <v-btn density="compact" color="error" title="Discard" @click="discardPending(item.pendingId)">
+              <v-btn icon color="error" title="Discard" aria-label="Discard" @click="discardPending(item.pendingId)">
                 <v-icon :icon="mdiCloseCircle" />
               </v-btn>
             </div>
             <div v-else class="d-flex ga-2">
-              <v-btn density="compact" color="primary" title="View" :to="`/log/${item.id}`">
+              <v-btn icon color="primary" title="View" :aria-label="`View ${item.name}`" :to="`/log/${item.id}`">
                 <v-icon :icon="mdiEye" />
               </v-btn>
-              <v-btn density="compact" color="error" title="Delete" @click="deleteLog(item)">
+              <v-btn
+                icon color="error" title="Delete" :aria-label="`Delete ${item.name}`" :loading="deletingId === item.id"
+                @click="deleteLog(item)"
+              >
                 <v-icon :icon="mdiDelete" />
               </v-btn>
             </div>
           </v-card-title>
+          <v-card-text v-if="item.pending && item.pendingStatus === 'failed'" class="text-error pb-0">
+            Sync failed: {{ item.pendingError || 'unknown error' }}
+          </v-card-text>
           <v-card-subtitle>
             {{ item.dateStart?.toLocaleDateString() }}<template v-if="item.dateEnd">
               to {{ item.dateEnd.toLocaleDateString() }}

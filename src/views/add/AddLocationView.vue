@@ -3,10 +3,14 @@ import { mdiCampfire, mdiCrosshairsGps, mdiMapMarker } from '@mdi/js'
 import { LIcon, LMap, LMarker, LTileLayer } from '@maxel01/vue-leaflet'
 import { remult } from 'remult'
 import { computed, ref, toRaw, watch } from 'vue'
+import type { VForm } from 'vuetify/components'
 import 'leaflet/dist/leaflet.css'
 import router from '@/router'
 import { showAlert } from '@/scripts/alert'
-import { isNetworkError, queueMutation } from '@/scripts/outbox'
+import { offline } from '@/scripts/connectivity'
+import { required, validateForm } from '@/scripts/forms'
+import { describeFailure, isNetworkError, queueMutation } from '@/scripts/outbox'
+import { useUnsavedChanges } from '@/scripts/unsaved'
 import { getUser } from '@/scripts/user'
 import { Location, campTypes, campTypesToText, type campTypesType } from '@/shared/models/Location'
 
@@ -44,7 +48,7 @@ const hasPin = computed(() => location.value.latitude !== 0 || location.value.lo
 const markerLatLng = computed<LatLngTuple>(() => [location.value.latitude ?? 0, location.value.longitude ?? 0])
 
 const findDisabled = computed(() => {
-  if (findingAddress.value)
+  if (findingAddress.value || offline.value)
     return true
   return location.value.address.length === 0
 })
@@ -98,15 +102,18 @@ async function findAddress() {
     applyCoordinates(result.latitude, result.longitude)
     applyGeocodeInfo(result.info)
   }
-  catch {
-    showAlert('Failed to find address')
+  catch (err) {
+    showAlert(describeFailure('find address', err))
   }
   finally {
     findingAddress.value = false
   }
 }
 
+let reverseGeocodeId = 0
+
 async function reverseGeocode(lat: number, lng: number) {
+  const requestToken = ++reverseGeocodeId
   try {
     const resp = await fetch('/api/geocode', {
       method: 'POST',
@@ -117,6 +124,8 @@ async function reverseGeocode(lat: number, lng: number) {
     })
     const result = await resp.json()
 
+    if (requestToken !== reverseGeocodeId)
+      return // the pin has moved since - a newer lookup will fill this in
     if (!resp.ok)
       return
 
@@ -142,10 +151,16 @@ function useCurrentLocation() {
       await reverseGeocode(position.coords.latitude, position.coords.longitude)
       findingCurrentLocation.value = false
     },
-    () => {
-      showAlert('Unable to retrieve your location')
+    (err) => {
+      if (err.code === err.PERMISSION_DENIED)
+        showAlert('Location access is blocked. Allow it for this site in your browser settings, or place the pin on the map.')
+      else if (err.code === err.TIMEOUT)
+        showAlert('Couldn’t get a GPS fix in time. Try again with a clearer view of the sky, or place the pin on the map.')
+      else
+        showAlert('Couldn’t get a GPS fix. Try again, or place the pin on the map.')
       findingCurrentLocation.value = false
     },
+    { enableHighAccuracy: true, timeout: 20_000, maximumAge: 60_000 },
   )
 }
 
@@ -201,13 +216,30 @@ function onMarkerMove(latLng: LatLngTuple | { lat: number, lng: number }) {
   reverseGeocode(lat, lng)
 }
 
+const form = ref<VForm | null>(null)
+// Set once saved, so leaving for the locations list doesn't ask about unsaved changes.
+let saved = false
+
+useUnsavedChanges(() => {
+  const { name, notes, nicknames, address } = location.value
+  return !saved && (!!(name.trim() || notes.trim() || nicknames || address.trim()) || hasPin.value)
+})
+
+function leaveForLocations() {
+  saved = true
+  router.push({ name: 'locations' })
+}
+
 async function addLog() {
-  if (!location.value.name.trim()) {
-    showAlert('Please enter a name for the location')
+  // Flag first - validation is async, and a double tap mustn't add two locations.
+  if (saving.value)
+    return
+  saving.value = true
+  if (!await validateForm(form.value)) {
+    saving.value = false
     return
   }
 
-  saving.value = true
   try {
     if (!navigator.onLine) {
       await queueLocationOffline()
@@ -217,7 +249,7 @@ async function addLog() {
     const locationRepo = remult.repo(Location)
     await locationRepo.insert(location.value)
     showAlert('Location added successfully')
-    router.push({ name: 'locations' })
+    leaveForLocations()
   }
   catch (err) {
     if (isNetworkError(err)) {
@@ -238,7 +270,7 @@ async function queueLocationOffline() {
   const { user: _user, ...payload } = toRaw(location.value)
   await queueMutation('location', payload)
   showAlert('Saved offline — will sync when you\'re back online.')
-  router.push({ name: 'locations' })
+  leaveForLocations()
 }
 </script>
 
@@ -251,15 +283,18 @@ async function queueLocationOffline() {
         </v-card-title>
 
         <v-card-text>
-          <div class="d-flex flex-column ga-6">
-            <v-text-field v-model="location.name" hide-details label="Name" required variant="solo-filled" />
+          <v-form ref="form" class="d-flex flex-column ga-6" @submit.prevent="addLog">
+            <v-text-field
+              v-model="location.name" hide-details="auto" label="Name" required variant="solo-filled"
+              :rules="[required('Please enter a name for the location')]"
+            />
             <v-combobox
-              v-model="nicknamesArray" hide-details label="Nicknames" multiple chips closable-chips
+              v-model="nicknamesArray" label="Nicknames" multiple chips closable-chips
               variant="solo-filled" hint="Alternate names to help you find this place later" persistent-hint
             />
-            <v-textarea v-model="location.notes" hide-details label="Notes" required variant="solo-filled" />
+            <v-textarea v-model="location.notes" hide-details label="Notes" variant="solo-filled" />
             <v-select
-              v-model="location.type" hide-details label="Type" required :items="campTypesText"
+              v-model="location.type" hide-details label="Type" :items="campTypesText"
               variant="solo-filled" :prepend-inner-icon="mdiCampfire"
             />
 
@@ -272,8 +307,8 @@ async function queueLocationOffline() {
 
             <div class="d-flex align-center ga-4">
               <v-text-field
-                v-model="location.address" hide-details label="Address" required variant="solo-filled"
-                autocomplete="street-address" :prepend-inner-icon="mdiMapMarker" @keyup.enter="findAddress"
+                v-model="location.address" hide-details label="Address" variant="solo-filled"
+                autocomplete="street-address" :prepend-inner-icon="mdiMapMarker" @keydown.enter.prevent="findAddress"
               />
               <v-btn size="large" color="primary" :loading="findingAddress" :disabled="findDisabled" @click="findAddress">
                 Find
@@ -282,20 +317,21 @@ async function queueLocationOffline() {
 
             <v-switch
               v-model="showMapPicker" hide-details label="Edit location on map" color="primary"
-              density="compact"
             />
 
-            <div class="location-map" :class="{ 'location-map--readonly': !showMapPicker }">
-              <LMap v-model:zoom="mapZoom" :center="mapCenter" @ready="onMapReady">
-                <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" layer-type="base" name="OpenStreetMap" />
-                <LMarker v-if="hasPin" :lat-lng="markerLatLng" :draggable="showMapPicker" @update:lat-lng="onMarkerMove">
-                  <LIcon class-name="location-marker-icon" :icon-size="[30, 30]" :icon-anchor="[15, 15]">
-                    <div class="location-pin">
-                      <svg viewBox="0 0 24 24"><path :d="mdiMapMarker" /></svg>
-                    </div>
-                  </LIcon>
-                </LMarker>
-              </LMap>
+            <div>
+              <div class="location-map" :class="{ 'location-map--readonly': !showMapPicker }">
+                <LMap v-model:zoom="mapZoom" :center="mapCenter" @ready="onMapReady">
+                  <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" layer-type="base" name="OpenStreetMap" />
+                  <LMarker v-if="hasPin" :lat-lng="markerLatLng" :draggable="showMapPicker" @update:lat-lng="onMarkerMove">
+                    <LIcon class-name="location-marker-icon" :icon-size="[30, 30]" :icon-anchor="[15, 15]">
+                      <div class="location-pin">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path :d="mdiMapMarker" /></svg>
+                      </div>
+                    </LIcon>
+                  </LMarker>
+                </LMap>
+              </div>
               <div class="map-hint">
                 {{ showMapPicker ? 'Click the map or drag the pin to fine-tune the location' : 'View only — enable editing to place or move the pin' }}
               </div>
@@ -309,10 +345,10 @@ async function queueLocationOffline() {
               </div>
             </div>
 
-            <v-btn color="primary" :loading="saving" @click="addLog">
+            <v-btn type="submit" color="primary" :loading="saving">
               Add Location
             </v-btn>
-          </div>
+          </v-form>
         </v-card-text>
       </v-card>
     </v-col>
@@ -334,8 +370,8 @@ async function queueLocationOffline() {
 
 .map-hint {
   margin-top: 4px;
-  font-size: 12px;
-  opacity: 0.7;
+  font-size: 14px;
+  opacity: 0.87;
 }
 
 .location-marker-icon {

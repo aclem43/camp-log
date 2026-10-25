@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { mdiArchive, mdiChartLine, mdiFileUploadOutline, mdiHistory, mdiHome, mdiLogout, mdiMagnify, mdiMap, mdiMapMarker, mdiPlus } from '@mdi/js'
-import { logOut } from '@/scripts/user'
+import { pendingItems } from '@/scripts/outbox'
+import { confirmLogOut } from '@/scripts/user'
 </script>
 
 <template>
@@ -23,7 +24,10 @@ import { logOut } from '@/scripts/user'
     </v-list>
     <template #append>
       <v-list density="compact" nav>
-        <v-list-item :prepend-icon="mdiLogout" title="Logout" @click="() => logOut()" />
+        <v-list-item
+          :prepend-icon="mdiLogout" title="Logout" :base-color="pendingItems.length ? 'warning' : undefined"
+          @click="confirmLogOut"
+        />
       </v-list>
     </template>
   </v-navigation-drawer>

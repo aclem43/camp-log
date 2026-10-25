@@ -27,20 +27,22 @@ const color = computed(() => {
 </script>
 
 <template>
-  <v-slide-y-transition>
-    <v-banner
-      v-if="messages.length"
-      :color="color"
-      density="compact"
-      :icon="offline ? mdiWifiOff : mdiSync"
-      lines="one"
-      :text="messages.join(' ')"
-    >
-      <template v-if="!offline && (pendingCount > 0 || failedCount > 0)" #actions>
-        <v-btn size="small" variant="text" @click="syncOutbox()">
-          Sync now
-        </v-btn>
-      </template>
-    </v-banner>
-  </v-slide-y-transition>
+  <!-- The live region stays in the page so changes inside it get announced. -->
+  <div role="status">
+    <v-slide-y-transition>
+      <v-banner
+        v-if="messages.length"
+        :color="color"
+        density="compact"
+        :icon="offline ? mdiWifiOff : mdiSync"
+        :text="messages.join(' ')"
+      >
+        <template v-if="!offline && (pendingCount > 0 || failedCount > 0)" #actions>
+          <v-btn variant="text" @click="syncOutbox()">
+            Sync now
+          </v-btn>
+        </template>
+      </v-banner>
+    </v-slide-y-transition>
+  </div>
 </template>

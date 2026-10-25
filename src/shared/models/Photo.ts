@@ -22,6 +22,8 @@ export const photoFiles = {
   apiPrefilter: () => ({ user: { $id: remult.user!.id } }),
   deleted: async (photo) => {
     await photoFiles.remove(photo.filename)
+    if (photo.thumbnailFilename)
+      await photoFiles.remove(photo.thumbnailFilename)
   },
 })
 export class Photo {
@@ -41,6 +43,12 @@ export class Photo {
   // GET /api/photos/:id/file rather than a public static path.
   @Fields.string()
   filename = ''
+
+  // A small copy made in the browser at upload, for the gallery grid -
+  // GET /api/photos/:id/thumb. Empty for photos uploaded before thumbnails
+  // existed, which serve the original instead.
+  @Fields.string()
+  thumbnailFilename = ''
 
   @Fields.string()
   originalName = ''

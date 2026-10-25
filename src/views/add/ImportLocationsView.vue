@@ -5,6 +5,8 @@ import Papa from 'papaparse'
 import { remult } from 'remult'
 import { Location } from '@/shared/models/Location'
 import { showAlert } from '@/scripts/alert'
+import { offline } from '@/scripts/connectivity'
+import { isNetworkError, serverErrorMessage } from '@/scripts/outbox'
 import { getUser } from '@/scripts/user'
 
 const user = getUser()
@@ -15,6 +17,7 @@ interface ParsedRow {
   latitude: number | null
   longitude: number | null
   error?: string
+  importError?: string
 }
 
 const rows = ref<ParsedRow[]>([])
@@ -65,8 +68,9 @@ const validRows = () => rows.value.filter(r => !r.error)
 async function importRows() {
   importing.value = true
   const locationRepo = remult.repo(Location)
-  let successCount = 0
+  const imported = new Set<ParsedRow>()
   let failureCount = 0
+  let lostConnection = false
 
   for (const row of validRows()) {
     try {
@@ -78,18 +82,30 @@ async function importRows() {
         longitude: row.longitude!,
         user: user.value!,
       })
-      successCount++
+      imported.add(row)
+      row.importError = undefined
     }
-    catch {
+    catch (err) {
+      if (isNetworkError(err)) {
+        lostConnection = true
+        break
+      }
       failureCount++
+      row.importError = serverErrorMessage(err) ?? 'Failed to import'
     }
   }
 
   importing.value = false
-  rows.value = []
-  file.value = null
+  // Keep whatever didn't make it in, so it can be retried without picking the
+  // file again.
+  rows.value = rows.value.filter(r => !r.error && !imported.has(r))
+  if (!rows.value.length)
+    file.value = null
 
-  if (failureCount === 0)
+  const successCount = imported.size
+  if (lostConnection)
+    showAlert(`Imported ${successCount} location${successCount === 1 ? '' : 's'}. Lost connection, so the rest are kept here to import when you’re back online.`)
+  else if (failureCount === 0)
     showAlert(`Imported ${successCount} location${successCount === 1 ? '' : 's'}`)
   else
     showAlert(`Imported ${successCount} location${successCount === 1 ? '' : 's'}, ${failureCount} failed`)
@@ -115,31 +131,30 @@ async function importRows() {
             {{ validRows().length }} of {{ rows.length }} rows ready to import.
           </p>
 
-          <v-table density="compact">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Latitude</th>
-                <th>Longitude</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(row, index) in rows" :key="index">
-                <td>{{ row.name }}</td>
-                <td>{{ row.latitude }}</td>
-                <td>{{ row.longitude }}</td>
-                <td>
-                  <span v-if="row.error" class="text-error">{{ row.error }}</span>
-                  <span v-else class="text-success">OK</span>
-                </td>
-              </tr>
-            </tbody>
-          </v-table>
+          <!-- Paginated - a My Maps export can have thousands of rows. -->
+          <v-data-table
+            :headers="[
+              { title: 'Name', key: 'name' },
+              { title: 'Latitude', key: 'latitude' },
+              { title: 'Longitude', key: 'longitude' },
+              { title: 'Status', key: 'status', sortable: false },
+            ]"
+            :items="rows"
+            :items-per-page="10"
+          >
+            <template #[`item.status`]="{ item }">
+              <span v-if="item.error" class="text-error">{{ item.error }}</span>
+              <span v-else-if="item.importError" class="text-error">{{ item.importError }}</span>
+              <span v-else class="text-success">OK</span>
+            </template>
+          </v-data-table>
         </div>
 
+        <p v-if="offline && rows.length" class="text-medium-emphasis">
+          You’re offline. Importing needs a connection, so these rows are kept until you’re back online.
+        </p>
         <v-btn
-          color="primary" :disabled="validRows().length === 0" :loading="importing"
+          color="primary" :disabled="validRows().length === 0 || offline" :loading="importing"
           @click="importRows"
         >
           Import {{ validRows().length }} Location{{ validRows().length === 1 ? '' : 's' }}

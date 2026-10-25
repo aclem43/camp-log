@@ -3,10 +3,13 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { remult } from 'remult'
 import { mdiCloseCircle, mdiDelete, mdiEye, mdiSync } from '@mdi/js'
 import { Location } from '@/shared/models/Location'
+import LoadError from '@/components/LoadError.vue'
 import { getUser } from '@/scripts/user'
+import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
-import { pendingItems, removePending, retryPending } from '@/scripts/outbox'
-import { syncOutbox } from '@/scripts/sync'
+import { describeFailure, pendingItems, removePending, resolvePendingLocation } from '@/scripts/outbox'
+import { useRouteQuery } from '@/scripts/routeQuery'
+import { retrySync } from '@/scripts/sync'
 
 interface PendingLocationRow {
   pending: true
@@ -21,9 +24,22 @@ interface PendingLocationRow {
 type LocationRow = (Location & { pending?: undefined }) | PendingLocationRow
 
 const locations = ref<Location[]>([])
+const loading = ref(true)
+const loadError = ref(false)
+const deletingId = ref<number | null>(null)
 const user = getUser()
 async function loadLocations() {
-  locations.value = await remult.repo(Location).find({ where: { user: user.value! }, orderBy: { name: 'asc' } })
+  loading.value = true
+  loadError.value = false
+  try {
+    locations.value = await remult.repo(Location).find({ where: { user: user.value! }, orderBy: { name: 'asc' } })
+  }
+  catch {
+    loadError.value = true
+  }
+  finally {
+    loading.value = false
+  }
 }
 
 const pendingLocationRows = computed<PendingLocationRow[]>(() => pendingItems.value
@@ -41,10 +57,23 @@ const pendingLocationRows = computed<PendingLocationRow[]>(() => pendingItems.va
 
 const rows = computed<LocationRow[]>(() => [...pendingLocationRows.value, ...locations.value])
 
+const page = useRouteQuery('page', 1)
+// e.g. "name:asc"; empty when the user turns sorting off
+const sortQuery = useRouteQuery('sort', 'name:asc')
+const sortBy = computed({
+  get: () => sortQuery.value
+    ? [{ key: sortQuery.value.split(':')[0], order: sortQuery.value.endsWith(':desc') ? 'desc' as const : 'asc' as const }]
+    : [],
+  set: (value: { key: string, order?: boolean | 'asc' | 'desc' }[]) => {
+    sortQuery.value = value[0] ? `${value[0].key}:${value[0].order === 'desc' ? 'desc' : 'asc'}` : ''
+  },
+})
+
 async function discardPending(id: string) {
-  const confirmed = await askConfirm('Discard this unsynced location? It will be lost.', { confirmText: 'Discard' })
+  const confirmed = await askConfirm('Discard this unsynced location? It will be lost, and unsynced logs won’t link to it.', { confirmText: 'Discard' })
   if (!confirmed)
     return
+  await resolvePendingLocation(id, null)
   await removePending(id)
 }
 
@@ -61,8 +90,18 @@ async function deleteLocation(location: Location) {
   const confirmed = await askConfirm('Are you sure you want to delete this location? Its photos will be deleted too, and logs will no longer link to it.', { confirmText: 'Delete' })
   if (!confirmed)
     return
-  await remult.repo(Location).delete(location)
-  await loadLocations()
+  deletingId.value = location.id
+  try {
+    await remult.repo(Location).delete(location)
+    showAlert('Location deleted')
+    await loadLocations()
+  }
+  catch (err) {
+    showAlert(describeFailure('delete location', err))
+  }
+  finally {
+    deletingId.value = null
+  }
 }
 </script>
 
@@ -81,18 +120,20 @@ async function deleteLocation(location: Location) {
             >
               Add Location
             </v-btn>
+            <LoadError v-if="loadError" what="your locations" class="mt-4" @retry="loadLocations" />
             <v-data-table
-              density="compact"
+              v-model:page="page"
+              v-model:sort-by="sortBy"
+              :loading="loading"
               :headers="[
                 { title: 'Name', value: 'name', sortable: true },
                 { title: 'Nicknames', value: 'nicknames', sortable: false },
                 { title: 'Notes', value: 'notes', sortable: true },
                 { title: 'Address', value: 'address', sortable: true },
-                { title: 'Actions', value: 'actions', sortable: false, width: '100px' },
+                { title: 'Actions', value: 'actions', sortable: false, width: '128px' },
               ]"
               :items="rows"
               :items-per-page="5"
-              :sort-by="[{ key: 'name', order: 'asc' }]"
             >
               <template #[`item.name`]="{ item }">
                 {{ item.name }}
@@ -102,32 +143,36 @@ async function deleteLocation(location: Location) {
                 >
                   Pending sync
                 </v-chip>
-                <v-chip
-                  v-else-if="item.pending && item.pendingStatus === 'failed'"
-                  size="small" color="error" variant="tonal" class="ml-2"
-                  :title="item.pendingError"
-                >
-                  Sync failed
-                </v-chip>
+                <template v-else-if="item.pending && item.pendingStatus === 'failed'">
+                  <v-chip size="small" color="error" variant="tonal" class="ml-2">
+                    Sync failed
+                  </v-chip>
+                  <div class="text-error text-body-small">
+                    {{ item.pendingError || 'Unknown error' }}
+                  </div>
+                </template>
               </template>
               <template #[`item.actions`]="{ item }">
                 <div v-if="item.pending" class="d-flex ga-2 align-center justify-center">
                   <v-btn
                     v-if="item.pendingStatus === 'failed'"
-                    density="compact" color="primary" title="Retry sync"
-                    @click="retryPending(item.pendingId); syncOutbox()"
+                    icon color="primary" title="Retry sync" aria-label="Retry sync"
+                    @click="retrySync(item.pendingId)"
                   >
                     <v-icon :icon="mdiSync" />
                   </v-btn>
-                  <v-btn density="compact" color="error" title="Discard" @click="discardPending(item.pendingId)">
+                  <v-btn icon color="error" title="Discard" aria-label="Discard" @click="discardPending(item.pendingId)">
                     <v-icon :icon="mdiCloseCircle" />
                   </v-btn>
                 </div>
                 <div v-else class="d-flex ga-2 align-center justify-center">
-                  <v-btn density="compact" color="primary" :to="`/location/${item.id}`">
+                  <v-btn icon color="primary" title="View" :aria-label="`View ${item.name}`" :to="`/location/${item.id}`">
                     <v-icon :icon="mdiEye" />
                   </v-btn>
-                  <v-btn density="compact" color="error" @click="deleteLocation(item)">
+                  <v-btn
+                    icon color="error" title="Delete" :aria-label="`Delete ${item.name}`" :loading="deletingId === item.id"
+                    @click="deleteLocation(item)"
+                  >
                     <v-icon :icon="mdiDelete" />
                   </v-btn>
                 </div>

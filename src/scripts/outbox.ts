@@ -53,6 +53,29 @@ export async function removePending(id: string) {
   await refreshPending()
 }
 
+// A queued log can link to a queued location by its outbox id
+// (`pendingLocationIds`). Once that location syncs, swap in its real id - or,
+// if it's discarded instead (realId null), drop the link.
+export async function resolvePendingLocation(pendingId: string, realId: number | null) {
+  const db = await dbPromise
+  for (const record of await db.getAll('pending')) {
+    const pendingIds = record.payload.pendingLocationIds as string[] | undefined
+    if (record.entity !== 'log' || !pendingIds?.includes(pendingId))
+      continue
+    record.payload.pendingLocationIds = pendingIds.filter(id => id !== pendingId)
+    if (realId !== null)
+      record.payload.locationIds = [...(record.payload.locationIds as number[] | undefined ?? []), realId]
+    await db.put('pending', record)
+  }
+  await refreshPending()
+}
+
+export async function clearOutbox() {
+  const db = await dbPromise
+  await db.clear('pending')
+  await refreshPending()
+}
+
 export async function markFailed(id: string, error: string) {
   const db = await dbPromise
   const record = await db.get('pending', id)
@@ -86,6 +109,14 @@ export function serverErrorMessage(err: unknown): string | undefined {
   if (isNetworkError(err))
     return undefined
   return (err as { message?: string } | undefined)?.message
+}
+
+// A snackbar message for a failed request, e.g. describeFailure('delete log', err).
+export function describeFailure(action: string, err: unknown) {
+  if (isNetworkError(err))
+    return `Failed to ${action}: you’re offline. Try again when you have a connection.`
+  const message = serverErrorMessage(err)
+  return message ? `Failed to ${action}: ${message}` : `Failed to ${action}. Please try again.`
 }
 
 refreshPending()

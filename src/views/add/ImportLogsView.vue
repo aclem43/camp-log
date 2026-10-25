@@ -7,6 +7,11 @@ import { Location, campTypes, campTypesToText, type campTypesType } from '@/shar
 import { Log } from '@/shared/models/Log'
 import { LogLocation } from '@/shared/models/LogLocation'
 import { showAlert } from '@/scripts/alert'
+import { askConfirm } from '@/scripts/confirm'
+import { offline } from '@/scripts/connectivity'
+import { startOfDay } from '@/scripts/dates'
+import { describeFailure, isNetworkError, serverErrorMessage } from '@/scripts/outbox'
+import { useUnsavedChanges } from '@/scripts/unsaved'
 import { getUser } from '@/scripts/user'
 
 const user = getUser()
@@ -61,6 +66,10 @@ interface ImportRow {
   newLocationDraft: NewLocationDraft
   status: 'pending' | 'success' | 'skipped' | 'error'
   error?: string
+  // Set once the log is created, so a retry after a failed location link
+  // finishes that log instead of creating another.
+  log?: Log
+  linkedLocationIds: number[]
 }
 
 const BRANCHES = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA', 'National']
@@ -150,19 +159,30 @@ function buildRow(entry: TerrainEntry): ImportRow {
       country: '',
     },
     status: 'pending',
+    linkedLocationIds: [],
   }
 }
 
 async function loadEntries(entries: TerrainEntry[]) {
   loadingEntries.value = true
-  const [locations, alreadyImported] = await Promise.all([
-    locationRepo.find({ where: { user: user.value! } }),
-    entries.length
-      ? logRepo.find({ where: { user: user.value!, terrainId: entries.map(e => e.id) } })
-      : Promise.resolve([]),
-  ])
+  let locations: Location[]
+  let alreadyImported: Log[]
+  try {
+    [locations, alreadyImported] = await Promise.all([
+      locationRepo.find({ where: { user: user.value! } }),
+      entries.length
+        ? logRepo.find({ where: { user: user.value!, terrainId: entries.map(e => e.id) } })
+        : Promise.resolve([]),
+    ])
+  }
+  catch (err) {
+    showAlert(describeFailure('load your locations and past imports', err))
+    return
+  }
+  finally {
+    loadingEntries.value = false
+  }
   existingLocations.value = locations
-  loadingEntries.value = false
 
   const importedIds = new Set(alreadyImported.map(l => l.terrainId))
   rows.value = entries.map((entry) => {
@@ -238,17 +258,30 @@ async function connectToTerrain() {
   }
 }
 
-function startOver() {
-  rows.value = []
-  currentIndex.value = 0
-}
-
 const currentRow = computed(() => rows.value[currentIndex.value] as ImportRow | undefined)
 const totalCount = computed(() => rows.value.length)
 const importedCount = computed(() => rows.value.filter(r => r.status === 'success').length)
 const skippedCount = computed(() => rows.value.filter(r => r.status === 'skipped').length)
-const remainingCount = computed(() => rows.value.filter(r => r.status === 'pending').length)
+// A row that failed to import still needs dealing with (retry or skip).
+const remainingCount = computed(() => rows.value.filter(r => r.status === 'pending' || r.status === 'error').length)
 const allDone = computed(() => rows.value.length > 0 && remainingCount.value === 0)
+
+async function startOver() {
+  if (remainingCount.value > 0) {
+    const confirmed = await askConfirm(
+      `Start over? Your progress reviewing the ${remainingCount.value} remaining ${remainingCount.value === 1 ? 'entry' : 'entries'} will be lost. Entries already imported stay imported.`,
+      { title: 'Start over', confirmText: 'Start Over', color: 'warning' },
+    )
+    if (!confirmed)
+      return
+  }
+  rows.value = []
+  currentIndex.value = 0
+}
+
+// Mid-review: entries left to step through, with any edits made to them.
+useUnsavedChanges(() => remainingCount.value > 0)
+
 const progressPercent = computed(() => totalCount.value === 0 ? 0 : ((importedCount.value + skippedCount.value) / totalCount.value) * 100)
 
 function goPrevious() {
@@ -261,12 +294,12 @@ function goNext() {
     currentIndex.value++
 }
 
-// After a new location is created, re-check any still-pending rows that were
+// After a new location is created, re-check any rows not yet imported that were
 // also proposing "create new" - if their text now matches the just-created
 // location, link them to it instead of creating a near-duplicate later.
 function rematchPendingRows() {
   for (const row of rows.value) {
-    if (row.status !== 'pending' || !row.addNewLocation)
+    if (row.status === 'success' || row.status === 'skipped' || !row.addNewLocation)
       continue
     const match = findMatchingLocation(row.locationText)
     if (match) {
@@ -278,7 +311,7 @@ function rematchPendingRows() {
 }
 
 const findAddressDisabled = computed(() => {
-  if (!currentRow.value || findingAddress.value)
+  if (!currentRow.value || findingAddress.value || offline.value)
     return true
   return currentRow.value.newLocationDraft.address.length === 0
 })
@@ -306,8 +339,8 @@ async function findDraftAddress() {
     row.newLocationDraft.state = result.info?.state ?? row.newLocationDraft.state
     row.newLocationDraft.country = result.info?.country ?? row.newLocationDraft.country
   }
-  catch {
-    showAlert('Failed to find address')
+  catch (err) {
+    showAlert(describeFailure('find address', err))
   }
   finally {
     findingAddress.value = false
@@ -335,6 +368,10 @@ async function resolveLocations(row: ImportRow): Promise<Location[]> {
       user: user.value!,
     })
     existingLocations.value.push(location)
+    // From here on it's an existing location, so a retry after a later
+    // failure links it rather than creating it again.
+    row.addNewLocation = false
+    row.selectedLocationIds.push(location.id)
     rematchPendingRows()
     locations.push(location)
   }
@@ -347,10 +384,16 @@ async function importCurrent() {
   if (!row || row.status === 'success')
     return
 
+  if (row.dateEnd && startOfDay(row.dateEnd) < startOfDay(row.dateStart)) {
+    row.status = 'error'
+    row.error = 'End date is before the start date'
+    return
+  }
+
   saving.value = true
   try {
     const locations = await resolveLocations(row)
-    const log = await logRepo.insert({
+    const log = row.log ??= await logRepo.insert({
       name: row.name,
       description: row.description,
       weather: row.weather,
@@ -359,7 +402,16 @@ async function importCurrent() {
       terrainId: row.raw.id,
       user: user.value!,
     })
-    await Promise.allSettled(locations.map(location => logLocationRepo.insert({ log, location })))
+    const results = await Promise.allSettled(
+      locations
+        .filter(location => !row.linkedLocationIds.includes(location.id))
+        .map(async (location) => {
+          await logLocationRepo.insert({ log, location })
+          row.linkedLocationIds.push(location.id)
+        }),
+    )
+    if (results.some(r => r.status === 'rejected'))
+      throw new Error('Log created, but a location couldn’t be linked. Retry to link it.')
     row.status = 'success'
     row.error = undefined
     if (currentIndex.value < rows.value.length - 1)
@@ -367,7 +419,11 @@ async function importCurrent() {
   }
   catch (err) {
     row.status = 'error'
-    row.error = err instanceof Error ? err.message : 'Failed to import'
+    // remult throws server errors as plain objects, not Errors
+    if (isNetworkError(err))
+      row.error = 'You’re offline. Retry when you have a connection.'
+    else
+      row.error = (err instanceof Error ? err.message : serverErrorMessage(err)) || 'Failed to import'
   }
   finally {
     saving.value = false
@@ -435,12 +491,12 @@ function skipCurrent() {
 
         <template v-else>
           <div class="d-flex align-center justify-space-between ga-4">
-            <div class="text-body-2">
+            <div class="text-body-medium">
               <strong>{{ importedCount }}</strong> imported ·
               <strong>{{ skippedCount }}</strong> skipped ·
               <strong>{{ remainingCount }}</strong> remaining of {{ totalCount }}
             </div>
-            <v-btn variant="text" size="small" @click="startOver">
+            <v-btn variant="text" color="warning" @click="startOver">
               Start Over
             </v-btn>
           </div>
@@ -510,7 +566,7 @@ function skipCurrent() {
 
                 <div
                   v-if="currentRow.raw.details?.other_participants || currentRow.raw.details?.purpose || currentRow.raw.details?.verifier?.name"
-                  class="text-body-2 text-medium-emphasis"
+                  class="text-body-medium text-medium-emphasis"
                 >
                   <div v-if="currentRow.raw.details?.purpose">
                     Purpose: {{ currentRow.raw.details.purpose }}
@@ -543,7 +599,7 @@ function skipCurrent() {
                   hide-details
                   :disabled="currentRow.status === 'success'"
                 />
-                <p v-if="currentRow.locationText" class="text-caption text-medium-emphasis">
+                <p v-if="currentRow.locationText" class="text-body-small text-medium-emphasis">
                   Terrain says: "{{ currentRow.locationText }}"
                 </p>
 
@@ -552,12 +608,11 @@ function skipCurrent() {
                   v-model="currentRow.addNewLocation"
                   label="Also create a new location"
                   hide-details
-                  density="compact"
                 />
 
                 <v-card v-if="currentRow.addNewLocation && currentRow.status !== 'success'" variant="outlined">
                   <v-card-text class="d-flex flex-column ga-4">
-                    <p class="text-subtitle-2 mb-0">
+                    <p class="text-title-small mb-0">
                       New Location
                     </p>
                     <v-text-field
@@ -583,7 +638,7 @@ function skipCurrent() {
                         Find
                       </v-btn>
                     </div>
-                    <div v-if="currentRow.newLocationDraft.latitude" class="text-caption text-medium-emphasis">
+                    <div v-if="currentRow.newLocationDraft.latitude" class="text-body-small text-medium-emphasis">
                       {{ currentRow.newLocationDraft.city }}, {{ currentRow.newLocationDraft.state }},
                       {{ currentRow.newLocationDraft.country }}
                     </div>

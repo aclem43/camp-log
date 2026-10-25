@@ -1,15 +1,28 @@
 <script setup lang="ts">
 import { remult } from 'remult'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import type { VForm } from 'vuetify/components'
 import changelogRaw from '../../CHANGELOG.md?raw'
 import type { UnitPreference } from '@/shared/models/auth/User'
 import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
+import LoadError from '@/components/LoadError.vue'
 import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
 import { darkTheme } from '@/scripts/theme'
-import { deactivateAccount, getUser, logOut, updateProfile } from '@/scripts/user'
+import { offline } from '@/scripts/connectivity'
+import { required, validateForm } from '@/scripts/forms'
+import { describeFailure, pendingItems } from '@/scripts/outbox'
+import { useRouteQuery } from '@/scripts/routeQuery'
+import { confirmLogOut, deactivateAccount, getUser, updateProfile } from '@/scripts/user'
 
 const activityRepo = remult.repo(ActivityTemplate)
+
+// The open panel, in the URL so links can open one (e.g. ?panel=activities).
+const openPanel = useRouteQuery('panel', '')
+const panelModel = computed({
+  get: () => openPanel.value || undefined,
+  set: (value: string | undefined) => { openPanel.value = value ?? '' },
+})
 
 const activityTemplates = ref<ActivityTemplate[]>([])
 
@@ -19,8 +32,15 @@ const activity = ref<Omit<ActivityTemplate, 'id'>>({
   unit: '',
 })
 const user = getUser()
+const activitiesError = ref(false)
 async function loadActivities() {
-  activityTemplates.value = await activityRepo.find({ where: { user: user.value! } })
+  activitiesError.value = false
+  try {
+    activityTemplates.value = await activityRepo.find({ where: { user: user.value! } })
+  }
+  catch {
+    activitiesError.value = true
+  }
 }
 
 const version = ref('Loading')
@@ -80,19 +100,40 @@ async function removeActivity(activity: ActivityTemplate) {
   const confirmed = await askConfirm('Are you sure you want to remove this activity? Every value logged for it will be deleted too.', { confirmText: 'Remove' })
   if (!confirmed)
     return
-  await activityRepo.delete(activity.id)
-  showAlert('Activity removed successfully')
-  await loadActivities()
+  try {
+    await activityRepo.delete(activity.id)
+    showAlert('Activity removed successfully')
+    await loadActivities()
+  }
+  catch (err) {
+    showAlert(describeFailure('remove activity', err))
+  }
 }
 
+const addingActivity = ref(false)
+const activityForm = ref<VForm | null>(null)
 async function addActivity() {
-  if (!activity.value.name || !activity.value.description || !activity.value.unit) {
-    showAlert('Name, Description, and Units are required')
+  // Flag first - validation is async, and a double tap mustn't slip past it.
+  if (addingActivity.value)
     return
+  addingActivity.value = true
+  try {
+    if (!await validateForm(activityForm.value))
+      return
+    await activityRepo.insert(activity.value)
+    activity.value = { name: '', description: '', unit: '' }
+    // Clearing the fields would otherwise flag them all as missing.
+    await nextTick()
+    activityForm.value?.resetValidation()
+    showAlert('Activity added successfully')
+    await loadActivities()
   }
-  await activityRepo.insert(activity.value)
-  showAlert('Activity added successfully')
-  await loadActivities()
+  catch (err) {
+    showAlert(describeFailure('add activity', err))
+  }
+  finally {
+    addingActivity.value = false
+  }
 }
 
 const unitOptions: { title: string, value: UnitPreference }[] = [
@@ -125,7 +166,7 @@ async function saveProfile() {
 
 async function handleDeactivate() {
   const confirmed = await askConfirm(
-    'Are you sure you want to deactivate your account? You will be logged out and will not be able to sign back in.',
+    `Are you sure you want to deactivate your account? You will be logged out and will not be able to sign back in.${pendingItems.value.length ? ' Changes saved on this device that haven’t synced yet will be deleted.' : ''}`,
     { confirmText: 'Deactivate' },
   )
   if (!confirmed)
@@ -133,8 +174,35 @@ async function handleDeactivate() {
   await deactivateAccount()
 }
 
-function exportData() {
-  window.location.href = '/api/export-data'
+// Fetched rather than navigated to, so a failure (no signal, say) shows a
+// message instead of leaving the PWA on a browser error page.
+const exporting = ref(false)
+async function exportData() {
+  if (offline.value) {
+    showAlert('Exporting needs a connection. Try again when you’re back online.')
+    return
+  }
+  exporting.value = true
+  try {
+    const response = await fetch('/api/export-data')
+    if (!response.ok) {
+      showAlert('Failed to export data. Please try again.')
+      return
+    }
+    const filename = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'camp-log-export.json'
+    const url = URL.createObjectURL(await response.blob())
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+  catch (err) {
+    showAlert(describeFailure('export data', err))
+  }
+  finally {
+    exporting.value = false
+  }
 }
 
 const importFile = ref<File | null>(null)
@@ -147,7 +215,14 @@ async function importData() {
   importing.value = true
   try {
     const text = await importFile.value.text()
-    const parsed = JSON.parse(text)
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(text)
+    }
+    catch {
+      showAlert('That file isn’t a Camp Log export (it isn’t valid JSON).')
+      return
+    }
     const response = await fetch('/api/import-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -167,8 +242,8 @@ async function importData() {
     importFile.value = null
     await loadActivities()
   }
-  catch {
-    showAlert('Invalid export file')
+  catch (err) {
+    showAlert(describeFailure('import data', err))
   }
   finally {
     importing.value = false
@@ -185,19 +260,19 @@ async function importData() {
             Settings
           </v-card-title>
           <v-card-text>
-            <v-expansion-panels>
-              <v-expansion-panel>
+            <v-expansion-panels v-model="panelModel">
+              <v-expansion-panel value="info">
                 <v-expansion-panel-title> Info </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <div class="d-flex align-center ga-4">
                     <span>Version: {{ version }}</span>
-                    <v-btn size="small" variant="text" color="primary" @click="showChangelog = true">
+                    <v-btn variant="text" color="primary" @click="showChangelog = true">
                       View Changelog
                     </v-btn>
                   </div>
                 </v-expansion-panel-text>
               </v-expansion-panel>
-              <v-expansion-panel>
+              <v-expansion-panel value="account">
                 <v-expansion-panel-title> Account </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <div class="d-flex flex-column ga-4">
@@ -215,7 +290,7 @@ async function importData() {
 
                     <v-divider class="my-2" />
 
-                    <v-btn color="secondary" @click="() => logOut()">
+                    <v-btn :color="pendingItems.length ? 'warning' : 'secondary'" @click="confirmLogOut">
                       Logout
                     </v-btn>
                     <v-btn color="error" variant="outlined" @click="handleDeactivate">
@@ -224,13 +299,13 @@ async function importData() {
                   </div>
                 </v-expansion-panel-text>
               </v-expansion-panel>
-              <v-expansion-panel>
+              <v-expansion-panel value="themes">
                 <v-expansion-panel-title> Themes </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <v-switch v-model="darkTheme" label="Dark Theme" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
-              <v-expansion-panel>
+              <v-expansion-panel value="activities">
                 <v-expansion-panel-title>Manage Activities</v-expansion-panel-title>
 
                 <v-expansion-panel-text>
@@ -238,6 +313,7 @@ async function importData() {
                     <v-list-subheader>
                       Current Activity Templates
                     </v-list-subheader>
+                    <LoadError v-if="activitiesError" what="your activity templates" @retry="loadActivities" />
                     <v-list-item v-for="act in activityTemplates" :key="act.id">
                       <v-list-item-title>
                         {{ act.name }}
@@ -246,28 +322,34 @@ async function importData() {
                         {{ act.description }}
                       </v-list-item-subtitle>
                       <v-list-item-action class="my-2">
-                        <v-btn density="compact" color="error" @click="removeActivity(act)">
+                        <v-btn color="error" @click="removeActivity(act)">
                           Remove
                         </v-btn>
                       </v-list-item-action>
                       <v-divider />
                     </v-list-item>
                   </v-list>
-                  <v-text-field v-model="activity.name" label="Name" required variant="solo-filled" />
-                  <v-text-field v-model="activity.description" label="Description" required variant="solo-filled" />
-                  <v-text-field
-                    v-model="activity.unit"
-                    label="Units"
-                    required
-                    variant="solo-filled"
-                    :placeholder="profile.unitPreference === 'metric' ? 'e.g. km, kg' : 'e.g. mi, lb'"
-                  />
-                  <v-btn color="primary" @click="addActivity">
-                    Add Activity
-                  </v-btn>
+                  <v-form ref="activityForm" @submit.prevent="addActivity">
+                    <v-text-field v-model="activity.name" label="Name" required variant="solo-filled" :rules="[required('Name is required')]" />
+                    <v-text-field
+                      v-model="activity.description" label="Description" required variant="solo-filled"
+                      :rules="[required('Description is required')]"
+                    />
+                    <v-text-field
+                      v-model="activity.unit"
+                      label="Units"
+                      required
+                      variant="solo-filled"
+                      :placeholder="profile.unitPreference === 'metric' ? 'e.g. km, kg' : 'e.g. mi, lb'"
+                      :rules="[required('Units are required')]"
+                    />
+                    <v-btn type="submit" color="primary" :loading="addingActivity">
+                      Add Activity
+                    </v-btn>
+                  </v-form>
                 </v-expansion-panel-text>
               </v-expansion-panel>
-              <v-expansion-panel>
+              <v-expansion-panel value="data">
                 <v-expansion-panel-title> Data </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <div class="d-flex flex-column ga-4">
@@ -275,7 +357,7 @@ async function importData() {
                       <p class="mb-2">
                         Export all of your logs, locations, and activity templates as a JSON file.
                       </p>
-                      <v-btn color="primary" @click="exportData">
+                      <v-btn color="primary" :loading="exporting" @click="exportData">
                         Export Data
                       </v-btn>
                     </div>
@@ -314,16 +396,16 @@ async function importData() {
             <v-divider v-if="index > 0" class="my-4" />
 
             <div v-if="release.sections.length === 0" class="d-flex align-baseline flex-wrap ga-2">
-              <span class="text-subtitle-2 font-weight-bold">{{ release.version }}</span>
-              <span class="text-caption text-medium-emphasis">{{ release.date }} · No notable changes</span>
+              <span class="text-title-small font-weight-bold">{{ release.version }}</span>
+              <span class="text-body-small text-medium-emphasis">{{ release.date }} · No notable changes</span>
             </div>
             <div v-else>
               <div class="d-flex align-baseline ga-2 mb-3">
-                <span class="text-subtitle-1 font-weight-bold">{{ release.version }}</span>
-                <span class="text-caption text-medium-emphasis">{{ release.date }}</span>
+                <span class="text-body-large font-weight-bold">{{ release.version }}</span>
+                <span class="text-body-small text-medium-emphasis">{{ release.date }}</span>
               </div>
               <div v-for="(section, sIndex) in release.sections" :key="section.title" :class="sIndex > 0 ? 'mt-3' : ''">
-                <div class="text-caption text-uppercase font-weight-bold mb-1" :class="sectionColor(section.title)">
+                <div class="text-body-small text-uppercase font-weight-bold mb-1" :class="sectionColor(section.title)">
                   {{ section.title }}
                 </div>
                 <ul class="changelog-list">

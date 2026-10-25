@@ -6,6 +6,7 @@ import router from '@/router'
 
 const email = ref('')
 const password = ref('')
+const submitting = ref(false)
 
 onMounted(() => {
   if (checkLogin()) {
@@ -13,8 +14,17 @@ onMounted(() => {
   }
 })
 
-function submit() {
-  logIn({ email: email.value, password: password.value })
+async function submit() {
+  // A double tap mustn't send the login twice.
+  if (submitting.value)
+    return
+  submitting.value = true
+  try {
+    await logIn({ email: email.value, password: password.value })
+  }
+  finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -45,6 +55,7 @@ function submit() {
             <v-btn
               color="primary"
               type="submit"
+              :loading="submitting"
             >
               Login
             </v-btn>

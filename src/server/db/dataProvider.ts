@@ -7,5 +7,5 @@ import { pool } from './pool'
 export const dataProvider = proc.env.DATABASE_TYPE === 'JSON'
   ? new JsonDataProvider(new JsonEntityFileStorage('./db'))
   : new SqlDatabase(new PostgresDataProvider(pool, {
-      orderByNullsFirst: false,
-    }))
+    orderByNullsFirst: false,
+  }))

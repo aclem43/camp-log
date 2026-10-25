@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import ImportLocationsView from './ImportLocationsView.vue'
 import ImportLogsView from './ImportLogsView.vue'
+import { useRouteQuery } from '@/scripts/routeQuery'
 
-const tab = ref('locations')
+const tab = useRouteQuery('tab', 'locations')
 </script>
 
 <template>

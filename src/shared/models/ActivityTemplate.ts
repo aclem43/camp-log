@@ -3,31 +3,31 @@ import { Activity } from './Activity'
 import { User } from './auth/User'
 
 @Entity<ActivityTemplate>('activityTemplate', {
-    dbName: 'camp.activityTemplate',
-    allowApiCrud: Allow.authenticated,
-    apiPrefilter: () => ({ user: { $id: remult.user!.id } }),
-    saving: (activityTemplate) => {
-      activityTemplate.user = { id: remult.user!.id } as User
-    },
-    // An activity is meaningless without its template (no name or unit), so
-    // the values logged against it go too.
-    deleting: async (activityTemplate) => {
-      await remult.repo(Activity).deleteMany({ where: { template: { $id: activityTemplate.id } } })
-    },
+  dbName: 'camp.activityTemplate',
+  allowApiCrud: Allow.authenticated,
+  apiPrefilter: () => ({ user: { $id: remult.user!.id } }),
+  saving: (activityTemplate) => {
+    activityTemplate.user = { id: remult.user!.id } as User
+  },
+  // An activity is meaningless without its template (no name or unit), so
+  // the values logged against it go too.
+  deleting: async (activityTemplate) => {
+    await remult.repo(Activity).deleteMany({ where: { template: { $id: activityTemplate.id } } })
+  },
 })
 export class ActivityTemplate {
-    @Fields.autoIncrement()
-    id!: number
+  @Fields.autoIncrement()
+  id!: number
 
-    @Relations.toOne(() => User)
-    user?: User
+  @Relations.toOne(() => User)
+  user?: User
 
-    @Fields.string()
-    name = ''
+  @Fields.string()
+  name = ''
 
-    @Fields.string()
-    description = ''
+  @Fields.string()
+  description = ''
 
-    @Fields.string()
-    unit = ''
+  @Fields.string()
+  unit = ''
 }
