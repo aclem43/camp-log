@@ -16,7 +16,7 @@ The site is hosted for free on render, if its the first request to it in the fir
 [Site on free render plan](http://camp-log.onrender.com/)
 
 # Running with Docker
-A `Dockerfile` builds the frontend and runs the Express/Remult server. On every push to `master`, GitHub Actions builds the image and publishes it to `ghcr.io/aclem43/camp-log:latest` (see [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml)).
+A `Dockerfile` builds the frontend and runs the Express/Remult server. On every push to `master`, GitHub Actions first runs lint, type-check and the Playwright e2e suite ([.github/workflows/ci.yml](.github/workflows/ci.yml), which also runs on `develop` and pull requests), and only if those pass builds the image and publishes it to `ghcr.io/aclem43/camp-log` (see [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml)). Each image is tagged `latest` and with the app version (e.g. `1.3.0`) - point `image:` at a version tag instead of `latest` to pin a release or roll back to one.
 
 To run it (e.g. on a TrueNAS box):
 
