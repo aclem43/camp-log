@@ -5,6 +5,8 @@ import Papa from 'papaparse'
 import { remult } from 'remult'
 import { Location } from '@/shared/models/Location'
 import { showAlert } from '@/scripts/alert'
+import { offline } from '@/scripts/connectivity'
+import { isNetworkError, serverErrorMessage } from '@/scripts/outbox'
 import { getUser } from '@/scripts/user'
 
 const user = getUser()
@@ -15,6 +17,7 @@ interface ParsedRow {
   latitude: number | null
   longitude: number | null
   error?: string
+  importError?: string
 }
 
 const rows = ref<ParsedRow[]>([])
@@ -65,8 +68,9 @@ const validRows = () => rows.value.filter(r => !r.error)
 async function importRows() {
   importing.value = true
   const locationRepo = remult.repo(Location)
-  let successCount = 0
+  const imported = new Set<ParsedRow>()
   let failureCount = 0
+  let lostConnection = false
 
   for (const row of validRows()) {
     try {
@@ -78,18 +82,30 @@ async function importRows() {
         longitude: row.longitude!,
         user: user.value!,
       })
-      successCount++
+      imported.add(row)
+      row.importError = undefined
     }
-    catch {
+    catch (err) {
+      if (isNetworkError(err)) {
+        lostConnection = true
+        break
+      }
       failureCount++
+      row.importError = serverErrorMessage(err) ?? 'Failed to import'
     }
   }
 
   importing.value = false
-  rows.value = []
-  file.value = null
+  // Keep whatever didn't make it in, so it can be retried without picking the
+  // file again.
+  rows.value = rows.value.filter(r => !r.error && !imported.has(r))
+  if (!rows.value.length)
+    file.value = null
 
-  if (failureCount === 0)
+  const successCount = imported.size
+  if (lostConnection)
+    showAlert(`Imported ${successCount} location${successCount === 1 ? '' : 's'}. Lost connection, so the rest are kept here to import when you’re back online.`)
+  else if (failureCount === 0)
     showAlert(`Imported ${successCount} location${successCount === 1 ? '' : 's'}`)
   else
     showAlert(`Imported ${successCount} location${successCount === 1 ? '' : 's'}, ${failureCount} failed`)
@@ -131,6 +147,7 @@ async function importRows() {
                 <td>{{ row.longitude }}</td>
                 <td>
                   <span v-if="row.error" class="text-error">{{ row.error }}</span>
+                  <span v-else-if="row.importError" class="text-error">{{ row.importError }}</span>
                   <span v-else class="text-success">OK</span>
                 </td>
               </tr>
@@ -138,8 +155,11 @@ async function importRows() {
           </v-table>
         </div>
 
+        <p v-if="offline && rows.length" class="text-medium-emphasis">
+          You’re offline. Importing needs a connection, so these rows are kept until you’re back online.
+        </p>
         <v-btn
-          color="primary" :disabled="validRows().length === 0" :loading="importing"
+          color="primary" :disabled="validRows().length === 0 || offline" :loading="importing"
           @click="importRows"
         >
           Import {{ validRows().length }} Location{{ validRows().length === 1 ? '' : 's' }}

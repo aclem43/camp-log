@@ -53,6 +53,12 @@ export async function removePending(id: string) {
   await refreshPending()
 }
 
+export async function clearOutbox() {
+  const db = await dbPromise
+  await db.clear('pending')
+  await refreshPending()
+}
+
 export async function markFailed(id: string, error: string) {
   const db = await dbPromise
   const record = await db.get('pending', id)

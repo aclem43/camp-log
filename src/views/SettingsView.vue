@@ -7,7 +7,8 @@ import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
 import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
 import { darkTheme } from '@/scripts/theme'
-import { deactivateAccount, getUser, logOut, updateProfile } from '@/scripts/user'
+import { pendingItems, serverErrorMessage } from '@/scripts/outbox'
+import { confirmLogOut, deactivateAccount, getUser, updateProfile } from '@/scripts/user'
 
 const activityRepo = remult.repo(ActivityTemplate)
 
@@ -85,14 +86,28 @@ async function removeActivity(activity: ActivityTemplate) {
   await loadActivities()
 }
 
+const addingActivity = ref(false)
 async function addActivity() {
+  if (addingActivity.value)
+    return
   if (!activity.value.name || !activity.value.description || !activity.value.unit) {
     showAlert('Name, Description, and Units are required')
     return
   }
-  await activityRepo.insert(activity.value)
-  showAlert('Activity added successfully')
-  await loadActivities()
+  addingActivity.value = true
+  try {
+    await activityRepo.insert(activity.value)
+    activity.value = { name: '', description: '', unit: '' }
+    showAlert('Activity added successfully')
+    await loadActivities()
+  }
+  catch (err) {
+    const message = serverErrorMessage(err)
+    showAlert(message ? `Failed to add activity: ${message}` : 'Failed to add activity. Please check your connection and try again.')
+  }
+  finally {
+    addingActivity.value = false
+  }
 }
 
 const unitOptions: { title: string, value: UnitPreference }[] = [
@@ -125,7 +140,7 @@ async function saveProfile() {
 
 async function handleDeactivate() {
   const confirmed = await askConfirm(
-    'Are you sure you want to deactivate your account? You will be logged out and will not be able to sign back in.',
+    `Are you sure you want to deactivate your account? You will be logged out and will not be able to sign back in.${pendingItems.value.length ? ' Changes saved on this device that haven’t synced yet will be deleted.' : ''}`,
     { confirmText: 'Deactivate' },
   )
   if (!confirmed)
@@ -215,7 +230,7 @@ async function importData() {
 
                     <v-divider class="my-2" />
 
-                    <v-btn color="secondary" @click="() => logOut()">
+                    <v-btn :color="pendingItems.length ? 'warning' : 'secondary'" @click="confirmLogOut">
                       Logout
                     </v-btn>
                     <v-btn color="error" variant="outlined" @click="handleDeactivate">
@@ -262,7 +277,7 @@ async function importData() {
                     variant="solo-filled"
                     :placeholder="profile.unitPreference === 'metric' ? 'e.g. km, kg' : 'e.g. mi, lb'"
                   />
-                  <v-btn color="primary" @click="addActivity">
+                  <v-btn color="primary" :loading="addingActivity" @click="addActivity">
                     Add Activity
                   </v-btn>
                 </v-expansion-panel-text>

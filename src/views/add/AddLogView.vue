@@ -20,8 +20,8 @@ const log = ref<Omit<Log, 'id' >>({
   weather: '',
   terrainId: '',
   dateStart: new Date(),
-  dateEnd: undefined,
-
+  // "One Day" starts unticked, so the End Date picker is showing.
+  dateEnd: new Date(),
 })
 
 const user = getUser()
@@ -34,6 +34,8 @@ const saving = ref(false)
 watch(oneDay, (value) => {
   if (value)
     log.value.dateEnd = undefined
+  else
+    log.value.dateEnd ??= new Date(log.value.dateStart)
 })
 
 const selectedActivities = ref<{ template: ActivityTemplate, value?: number }[]>([])
@@ -87,6 +89,10 @@ function buildInput(): LogInput {
 async function addLog() {
   if (!log.value.name || !log.value.dateStart) {
     showAlert('Name and Start Date are required')
+    return
+  }
+  if (log.value.dateEnd && log.value.dateEnd < log.value.dateStart) {
+    showAlert('End Date can’t be before the Start Date')
     return
   }
   if (!selectedLocations.value.length) {

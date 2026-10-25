@@ -2,7 +2,9 @@ import { remult } from 'remult'
 import { readonly, ref, watch } from 'vue'
 import { createAuthClient } from 'better-auth/vue'
 import { showAlert } from './alert'
+import { askConfirm } from './confirm'
 import { offline } from './connectivity'
+import { clearOutbox, pendingItems } from './outbox'
 import type { UnitPreference } from '@/shared/models/auth/User'
 import router from '@/router'
 import { MIN_PASSWORD_LENGTH, User } from '@/shared/models/auth/User'
@@ -182,8 +184,26 @@ export async function logOut(message = 'Logged out') {
   sessionUnconfirmed = false
   cacheUser(null)
   await clearCachedData()
+  // Left in the outbox, unsynced items would later sync into whichever
+  // account signs in next.
+  await clearOutbox().catch(() => {})
   router.push({ name: 'login' })
   showAlert(message)
+}
+
+// What the Logout buttons call: warns first when logging out would discard
+// changes that haven't synced yet.
+export async function confirmLogOut() {
+  const count = pendingItems.value.length
+  if (count) {
+    const confirmed = await askConfirm(
+      `You have ${count} unsynced ${count === 1 ? 'item' : 'items'} saved on this device. Logging out will delete ${count === 1 ? 'it' : 'them'}. To keep ${count === 1 ? 'it' : 'them'}, stay logged in until you’re back online and ${count === 1 ? 'it has' : 'they have'} synced.`,
+      { title: 'Unsynced changes', confirmText: 'Log Out Anyway' },
+    )
+    if (!confirmed)
+      return
+  }
+  await logOut()
 }
 
 export async function updateProfile(data: { name: string, unitPreference: UnitPreference }) {

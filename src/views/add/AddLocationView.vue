@@ -106,7 +106,10 @@ async function findAddress() {
   }
 }
 
+let reverseGeocodeId = 0
+
 async function reverseGeocode(lat: number, lng: number) {
+  const requestToken = ++reverseGeocodeId
   try {
     const resp = await fetch('/api/geocode', {
       method: 'POST',
@@ -117,6 +120,8 @@ async function reverseGeocode(lat: number, lng: number) {
     })
     const result = await resp.json()
 
+    if (requestToken !== reverseGeocodeId)
+      return // the pin has moved since - a newer lookup will fill this in
     if (!resp.ok)
       return
 

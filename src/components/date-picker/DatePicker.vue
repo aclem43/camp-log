@@ -6,9 +6,9 @@ import type { DatePickerProps } from './DataPicker'
 
 defineProps<DatePickerProps>()
 
-const date = defineModel({
-  default: new Date(),
-})
+// No default: a default would be displayed while the bound value stays
+// undefined, so the date shown wouldn't be the one saved.
+const date = defineModel<Date>()
 </script>
 
 <template>

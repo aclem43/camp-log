@@ -109,6 +109,10 @@ async function findAddress() {
 async function save() {
   if (!location.value)
     return
+  if (!location.value.name.trim()) {
+    showAlert('Please enter a name for the location')
+    return
+  }
 
   saving.value = true
   try {

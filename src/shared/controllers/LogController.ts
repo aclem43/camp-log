@@ -32,6 +32,9 @@ async function resolveInput(input: LogInput) {
   const dateStart = new Date(input.dateStart)
   if (!input.dateStart || Number.isNaN(dateStart.getTime()))
     throw new Error('Start date is required')
+  const dateEnd = input.dateEnd ? new Date(input.dateEnd) : undefined
+  if (dateEnd && dateEnd < dateStart)
+    throw new Error('End date can’t be before the start date')
 
   const locationIds = [...new Set(input.locationIds ?? [])]
   if (!locationIds.length)
@@ -55,7 +58,7 @@ async function resolveInput(input: LogInput) {
       description: input.description ?? '',
       weather: input.weather ?? '',
       dateStart,
-      dateEnd: input.dateEnd ? new Date(input.dateEnd) : undefined,
+      dateEnd,
     },
     locations,
     activities: templates.map(template => ({ template, value: valueByTemplateId.get(template.id)! })),

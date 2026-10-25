@@ -61,6 +61,10 @@ interface ImportRow {
   newLocationDraft: NewLocationDraft
   status: 'pending' | 'success' | 'skipped' | 'error'
   error?: string
+  // Set once the log is created, so a retry after a failed location link
+  // finishes that log instead of creating another.
+  log?: Log
+  linkedLocationIds: number[]
 }
 
 const BRANCHES = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA', 'National']
@@ -150,6 +154,7 @@ function buildRow(entry: TerrainEntry): ImportRow {
       country: '',
     },
     status: 'pending',
+    linkedLocationIds: [],
   }
 }
 
@@ -335,6 +340,10 @@ async function resolveLocations(row: ImportRow): Promise<Location[]> {
       user: user.value!,
     })
     existingLocations.value.push(location)
+    // From here on it's an existing location, so a retry after a later
+    // failure links it rather than creating it again.
+    row.addNewLocation = false
+    row.selectedLocationIds.push(location.id)
     rematchPendingRows()
     locations.push(location)
   }
@@ -347,10 +356,16 @@ async function importCurrent() {
   if (!row || row.status === 'success')
     return
 
+  if (row.dateEnd && row.dateEnd < row.dateStart) {
+    row.status = 'error'
+    row.error = 'End date is before the start date'
+    return
+  }
+
   saving.value = true
   try {
     const locations = await resolveLocations(row)
-    const log = await logRepo.insert({
+    const log = row.log ??= await logRepo.insert({
       name: row.name,
       description: row.description,
       weather: row.weather,
@@ -359,7 +374,16 @@ async function importCurrent() {
       terrainId: row.raw.id,
       user: user.value!,
     })
-    await Promise.allSettled(locations.map(location => logLocationRepo.insert({ log, location })))
+    const results = await Promise.allSettled(
+      locations
+        .filter(location => !row.linkedLocationIds.includes(location.id))
+        .map(async (location) => {
+          await logLocationRepo.insert({ log, location })
+          row.linkedLocationIds.push(location.id)
+        }),
+    )
+    if (results.some(r => r.status === 'rejected'))
+      throw new Error('Log created, but a location couldn’t be linked. Retry to link it.')
     row.status = 'success'
     row.error = undefined
     if (currentIndex.value < rows.value.length - 1)

@@ -50,8 +50,12 @@ const selectedLocations = ref<Location[]>([])
 const locationOptions = ref<Location[]>([])
 
 watch(oneDay, (value) => {
-  if (value && log.value)
+  if (!log.value)
+    return
+  if (value)
     log.value.dateEnd = undefined
+  else
+    log.value.dateEnd ??= new Date(log.value.dateStart)
 })
 
 async function searchLocations(query: string) {
@@ -125,6 +129,10 @@ async function save() {
   }
   if (!log.value.dateStart) {
     showAlert('Start date is required')
+    return
+  }
+  if (log.value.dateEnd && log.value.dateEnd < log.value.dateStart) {
+    showAlert('End date can’t be before the start date')
     return
   }
   if (!selectedLocations.value.length) {
