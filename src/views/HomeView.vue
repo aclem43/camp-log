@@ -57,11 +57,13 @@ const recentLogs = computed(() => [
     .filter(item => item.entity === 'log')
     .map(item => ({
       key: item.id,
+      to: { name: 'logs' },
       title: (item.payload.name as string) || 'Untitled log',
       subtitle: `${(item.payload.dateStart as Date | undefined)?.toLocaleDateString() ?? ''} · ${item.status === 'failed' ? 'Sync failed' : 'Waiting to sync'}`,
     })),
   ...logs.value.map(log => ({
     key: String(log.id),
+    to: { name: 'log', params: { id: log.id } },
     title: log.name || 'Untitled log',
     subtitle: log.dateStart.toLocaleDateString(),
   })),
@@ -129,6 +131,7 @@ watch(() => pendingItems.value.length, (count, previous) => {
                 :key="loc.id"
                 :title="loc.name || 'Unnamed campsite'"
                 :subtitle="loc.address || 'No address set'"
+                :to="{ name: 'location', params: { id: loc.id } }"
               />
             </v-list>
             <p v-else class="text-medium-emphasis">
@@ -159,6 +162,7 @@ watch(() => pendingItems.value.length, (count, previous) => {
                 :key="log.key"
                 :title="log.title"
                 :subtitle="log.subtitle"
+                :to="log.to"
               />
             </v-list>
             <p v-else class="text-medium-emphasis">

@@ -54,9 +54,10 @@ export default defineConfig({
               },
             },
           },
-          // Photo files never change once uploaded (a new upload gets a new id).
+          // Photo files and their thumbnails never change once uploaded (a new
+          // upload gets a new id).
           {
-            urlPattern: ({ url, sameOrigin }) => sameOrigin && /^\/api\/photos\/\d+\/file$/.test(url.pathname),
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && /^\/api\/photos\/\d+\/(?:file|thumb)$/.test(url.pathname),
             handler: 'CacheFirst',
             method: 'GET',
             options: {

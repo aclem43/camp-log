@@ -3,6 +3,7 @@ import { remult } from 'remult'
 import { onMounted, ref, watch } from 'vue'
 import { mdiArrowLeft, mdiCloud, mdiDelete, mdiMapMarker } from '@mdi/js'
 import { useDisplay } from 'vuetify'
+import type { VForm } from 'vuetify/components'
 import { useDebounceFn } from '@vueuse/core'
 import { Log } from '@/shared/models/Log'
 import { Activity } from '@/shared/models/Activity'
@@ -16,7 +17,9 @@ import DatePicker from '@/components/date-picker/DatePicker.vue'
 import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
 import { startOfDay } from '@/scripts/dates'
+import { required, validateForm } from '@/scripts/forms'
 import { describeFailure } from '@/scripts/outbox'
+import { useUnsavedChanges } from '@/scripts/unsaved'
 import { getUser } from '@/scripts/user'
 import router from '@/router'
 
@@ -26,6 +29,11 @@ const props = defineProps<{
 
 const user = getUser()
 const { mobile } = useDisplay()
+const form = ref<VForm | null>(null)
+
+// Back to wherever the user came from (search results, a filtered list...),
+// or the logs list when this page was opened directly.
+const backTo = (window.history.state?.back as string | null) ?? { name: 'logs' }
 const logRepo = remult.repo(Log)
 const activityRepo = remult.repo(Activity)
 const activityTemplateRepo = remult.repo(ActivityTemplate)
@@ -84,6 +92,31 @@ async function searchLocations(query: string) {
 
 const debouncedSearchLocations = useDebounceFn(searchLocations, 300)
 
+// What's saved, to tell whether the form has unsaved edits.
+const savedState = ref('')
+let leaving = false
+
+function formState() {
+  if (!log.value)
+    return ''
+  return JSON.stringify({
+    name: log.value.name,
+    description: log.value.description,
+    weather: log.value.weather,
+    dateStart: log.value.dateStart?.getTime(),
+    dateEnd: log.value.dateEnd?.getTime(),
+    locationIds: selectedLocations.value.map(l => l.id),
+    activities: activityRows.value.map(r => [r.template.id, Number(r.value) || 0]),
+  })
+}
+
+useUnsavedChanges(() => !leaving && !!log.value && formState() !== savedState.value)
+
+function endDateRule() {
+  const { dateStart, dateEnd } = log.value ?? {}
+  return !dateEnd || !dateStart || startOfDay(dateEnd) >= startOfDay(dateStart) || 'End date can’t be before the start date'
+}
+
 // `refresh` reloads in place after a save, keeping the form (and scroll
 // position) on screen rather than swapping it for the skeleton.
 async function load(refresh = false) {
@@ -114,6 +147,7 @@ async function load(refresh = false) {
       .filter((l): l is LogLocation & { location: Location } => !!l.location)
       .map(l => l.location)
     locationOptions.value = selectedLocations.value.slice()
+    savedState.value = formState()
   }
   catch {
     // After a save the edits are already stored, so a failed refresh just
@@ -139,24 +173,8 @@ function removeActivityRow(row: ActivityRow) {
 }
 
 async function save() {
-  if (!log.value)
+  if (!log.value || !await validateForm(form.value))
     return
-  if (!log.value.name.trim()) {
-    showAlert('Name is required')
-    return
-  }
-  if (!log.value.dateStart) {
-    showAlert('Start date is required')
-    return
-  }
-  if (log.value.dateEnd && startOfDay(log.value.dateEnd) < startOfDay(log.value.dateStart)) {
-    showAlert('End date can’t be before the start date')
-    return
-  }
-  if (!selectedLocations.value.length) {
-    showAlert('At least one location is required')
-    return
-  }
 
   saving.value = true
   try {
@@ -192,6 +210,7 @@ async function deleteLog() {
   try {
     await logRepo.delete(log.value)
     showAlert('Log deleted')
+    leaving = true
     router.push({ name: 'logs' })
   }
   catch (err) {
@@ -229,14 +248,17 @@ onMounted(() => load())
 
       <v-card v-else>
         <v-card-title class="d-flex align-center ga-4">
-          <v-btn size="small" color="primary" @click="router.back()">
+          <v-btn icon color="primary" aria-label="Back" :to="backTo">
             <v-icon :icon="mdiArrowLeft" />
           </v-btn> {{ log.name }}
         </v-card-title>
 
         <v-card-text>
-          <div class="d-flex flex-column ga-6">
-            <v-text-field v-model="log.name" hide-details label="Name" required variant="solo-filled" />
+          <v-form ref="form" class="d-flex flex-column ga-6" @submit.prevent="save">
+            <v-text-field
+              v-model="log.name" hide-details="auto" label="Name" required variant="solo-filled"
+              :rules="[required('Name is required')]"
+            />
             <v-textarea v-model="log.description" hide-details label="Description" variant="solo-filled" />
             <v-autocomplete
               v-model="selectedLocations"
@@ -251,7 +273,8 @@ onMounted(() => load())
               closable-chips
               return-object
               no-filter
-              hide-details
+              hide-details="auto"
+              :rules="[required('Pick at least one location')]"
               @update:search="debouncedSearchLocations"
             />
             <v-text-field
@@ -259,13 +282,13 @@ onMounted(() => load())
               variant="solo-filled" hide-details
             />
 
-            <v-checkbox v-model="oneDay" label="One Day" hide-details density="compact" />
+            <v-checkbox v-model="oneDay" label="One Day" hide-details />
             <div class="d-flex flex-wrap ga-4">
               <div :style="mobile ? 'width: 100%' : 'flex: 1 1 0'">
                 <DatePicker v-model="log.dateStart" label="Start Date" />
               </div>
               <div v-if="!oneDay" :style="mobile ? 'width: 100%' : 'flex: 1 1 0'">
-                <DatePicker v-model="log.dateEnd" label="End Date" />
+                <DatePicker v-model="log.dateEnd" label="End Date" :rules="[endDateRule]" />
               </div>
             </div>
 
@@ -280,15 +303,20 @@ onMounted(() => load())
                   variant="solo-filled"
                   :items="templates"
                   style="max-width: 300px;"
-                  density="compact"
                   item-title="name"
                   return-object
                   hide-details
                 />
-                <v-btn color="primary" @click="addActivityRow">
+                <v-btn color="primary" :disabled="!currentlySelectedActivity" @click="addActivityRow">
                   Add Activity
                 </v-btn>
               </div>
+              <p v-if="!templates.length" class="text-medium-emphasis mb-4">
+                No activity types yet. Add them in
+                <router-link :to="{ name: 'settings', query: { panel: 'activities' } }">
+                  Settings
+                </router-link>.
+              </p>
               <v-divider />
               <v-list-item v-for="row in activityRows" :key="row.template.id">
                 <v-list-item-title>
@@ -301,10 +329,10 @@ onMounted(() => load())
                   <div class="d-flex ga-4 pa-2 align-center flex-grow-1 justify-end">
                     <v-text-field
                       v-model="row.value"
-                      :label="row.template.unit"
+                      :label="row.template.name"
+                      :suffix="row.template.unit"
                       variant="solo-filled"
                       style="max-width: 300px;min-width: 100px"
-                      density="compact"
                       hide-details
                       type="number"
                     />
@@ -320,7 +348,7 @@ onMounted(() => load())
             </v-list>
 
             <div class="d-flex ga-4">
-              <v-btn color="primary" :loading="saving" @click="save">
+              <v-btn type="submit" color="primary" :loading="saving">
                 Save
               </v-btn>
               <v-btn color="error" :prepend-icon="mdiDelete" :loading="deleting" @click="deleteLog">
@@ -330,7 +358,7 @@ onMounted(() => load())
 
             <v-divider />
             <PhotoGallery :log-id="log.id" />
-          </div>
+          </v-form>
         </v-card-text>
       </v-card>
     </v-col>

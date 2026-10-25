@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { remult } from 'remult'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import type { VForm } from 'vuetify/components'
 import changelogRaw from '../../CHANGELOG.md?raw'
 import type { UnitPreference } from '@/shared/models/auth/User'
 import { ActivityTemplate } from '@/shared/models/ActivityTemplate'
@@ -9,10 +10,19 @@ import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
 import { darkTheme } from '@/scripts/theme'
 import { offline } from '@/scripts/connectivity'
+import { required, validateForm } from '@/scripts/forms'
 import { describeFailure, pendingItems } from '@/scripts/outbox'
+import { useRouteQuery } from '@/scripts/routeQuery'
 import { confirmLogOut, deactivateAccount, getUser, updateProfile } from '@/scripts/user'
 
 const activityRepo = remult.repo(ActivityTemplate)
+
+// The open panel, in the URL so links can open one (e.g. ?panel=activities).
+const openPanel = useRouteQuery('panel', '')
+const panelModel = computed({
+  get: () => openPanel.value || undefined,
+  set: (value: string | undefined) => { openPanel.value = value ?? '' },
+})
 
 const activityTemplates = ref<ActivityTemplate[]>([])
 
@@ -101,17 +111,20 @@ async function removeActivity(activity: ActivityTemplate) {
 }
 
 const addingActivity = ref(false)
+const activityForm = ref<VForm | null>(null)
 async function addActivity() {
+  // Flag first - validation is async, and a double tap mustn't slip past it.
   if (addingActivity.value)
     return
-  if (!activity.value.name || !activity.value.description || !activity.value.unit) {
-    showAlert('Name, Description, and Units are required')
-    return
-  }
   addingActivity.value = true
   try {
+    if (!await validateForm(activityForm.value))
+      return
     await activityRepo.insert(activity.value)
     activity.value = { name: '', description: '', unit: '' }
+    // Clearing the fields would otherwise flag them all as missing.
+    await nextTick()
+    activityForm.value?.resetValidation()
     showAlert('Activity added successfully')
     await loadActivities()
   }
@@ -247,19 +260,19 @@ async function importData() {
             Settings
           </v-card-title>
           <v-card-text>
-            <v-expansion-panels>
-              <v-expansion-panel>
+            <v-expansion-panels v-model="panelModel">
+              <v-expansion-panel value="info">
                 <v-expansion-panel-title> Info </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <div class="d-flex align-center ga-4">
                     <span>Version: {{ version }}</span>
-                    <v-btn size="small" variant="text" color="primary" @click="showChangelog = true">
+                    <v-btn variant="text" color="primary" @click="showChangelog = true">
                       View Changelog
                     </v-btn>
                   </div>
                 </v-expansion-panel-text>
               </v-expansion-panel>
-              <v-expansion-panel>
+              <v-expansion-panel value="account">
                 <v-expansion-panel-title> Account </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <div class="d-flex flex-column ga-4">
@@ -286,13 +299,13 @@ async function importData() {
                   </div>
                 </v-expansion-panel-text>
               </v-expansion-panel>
-              <v-expansion-panel>
+              <v-expansion-panel value="themes">
                 <v-expansion-panel-title> Themes </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <v-switch v-model="darkTheme" label="Dark Theme" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
-              <v-expansion-panel>
+              <v-expansion-panel value="activities">
                 <v-expansion-panel-title>Manage Activities</v-expansion-panel-title>
 
                 <v-expansion-panel-text>
@@ -309,28 +322,34 @@ async function importData() {
                         {{ act.description }}
                       </v-list-item-subtitle>
                       <v-list-item-action class="my-2">
-                        <v-btn density="compact" color="error" @click="removeActivity(act)">
+                        <v-btn color="error" @click="removeActivity(act)">
                           Remove
                         </v-btn>
                       </v-list-item-action>
                       <v-divider />
                     </v-list-item>
                   </v-list>
-                  <v-text-field v-model="activity.name" label="Name" required variant="solo-filled" />
-                  <v-text-field v-model="activity.description" label="Description" required variant="solo-filled" />
-                  <v-text-field
-                    v-model="activity.unit"
-                    label="Units"
-                    required
-                    variant="solo-filled"
-                    :placeholder="profile.unitPreference === 'metric' ? 'e.g. km, kg' : 'e.g. mi, lb'"
-                  />
-                  <v-btn color="primary" :loading="addingActivity" @click="addActivity">
-                    Add Activity
-                  </v-btn>
+                  <v-form ref="activityForm" @submit.prevent="addActivity">
+                    <v-text-field v-model="activity.name" label="Name" required variant="solo-filled" :rules="[required('Name is required')]" />
+                    <v-text-field
+                      v-model="activity.description" label="Description" required variant="solo-filled"
+                      :rules="[required('Description is required')]"
+                    />
+                    <v-text-field
+                      v-model="activity.unit"
+                      label="Units"
+                      required
+                      variant="solo-filled"
+                      :placeholder="profile.unitPreference === 'metric' ? 'e.g. km, kg' : 'e.g. mi, lb'"
+                      :rules="[required('Units are required')]"
+                    />
+                    <v-btn type="submit" color="primary" :loading="addingActivity">
+                      Add Activity
+                    </v-btn>
+                  </v-form>
                 </v-expansion-panel-text>
               </v-expansion-panel>
-              <v-expansion-panel>
+              <v-expansion-panel value="data">
                 <v-expansion-panel-title> Data </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <div class="d-flex flex-column ga-4">

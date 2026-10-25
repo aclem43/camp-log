@@ -7,9 +7,11 @@ import { Location, campTypes, campTypesToText, type campTypesType } from '@/shar
 import { Log } from '@/shared/models/Log'
 import { LogLocation } from '@/shared/models/LogLocation'
 import { showAlert } from '@/scripts/alert'
+import { askConfirm } from '@/scripts/confirm'
 import { offline } from '@/scripts/connectivity'
 import { startOfDay } from '@/scripts/dates'
 import { describeFailure, isNetworkError, serverErrorMessage } from '@/scripts/outbox'
+import { useUnsavedChanges } from '@/scripts/unsaved'
 import { getUser } from '@/scripts/user'
 
 const user = getUser()
@@ -256,11 +258,6 @@ async function connectToTerrain() {
   }
 }
 
-function startOver() {
-  rows.value = []
-  currentIndex.value = 0
-}
-
 const currentRow = computed(() => rows.value[currentIndex.value] as ImportRow | undefined)
 const totalCount = computed(() => rows.value.length)
 const importedCount = computed(() => rows.value.filter(r => r.status === 'success').length)
@@ -268,6 +265,23 @@ const skippedCount = computed(() => rows.value.filter(r => r.status === 'skipped
 // A row that failed to import still needs dealing with (retry or skip).
 const remainingCount = computed(() => rows.value.filter(r => r.status === 'pending' || r.status === 'error').length)
 const allDone = computed(() => rows.value.length > 0 && remainingCount.value === 0)
+
+async function startOver() {
+  if (remainingCount.value > 0) {
+    const confirmed = await askConfirm(
+      `Start over? Your progress reviewing the ${remainingCount.value} remaining ${remainingCount.value === 1 ? 'entry' : 'entries'} will be lost. Entries already imported stay imported.`,
+      { title: 'Start over', confirmText: 'Start Over', color: 'warning' },
+    )
+    if (!confirmed)
+      return
+  }
+  rows.value = []
+  currentIndex.value = 0
+}
+
+// Mid-review: entries left to step through, with any edits made to them.
+useUnsavedChanges(() => remainingCount.value > 0)
+
 const progressPercent = computed(() => totalCount.value === 0 ? 0 : ((importedCount.value + skippedCount.value) / totalCount.value) * 100)
 
 function goPrevious() {
@@ -482,7 +496,7 @@ function skipCurrent() {
               <strong>{{ skippedCount }}</strong> skipped ·
               <strong>{{ remainingCount }}</strong> remaining of {{ totalCount }}
             </div>
-            <v-btn variant="text" size="small" @click="startOver">
+            <v-btn variant="text" color="warning" @click="startOver">
               Start Over
             </v-btn>
           </div>
@@ -594,7 +608,6 @@ function skipCurrent() {
                   v-model="currentRow.addNewLocation"
                   label="Also create a new location"
                   hide-details
-                  density="compact"
                 />
 
                 <v-card v-if="currentRow.addNewLocation && currentRow.status !== 'success'" variant="outlined">

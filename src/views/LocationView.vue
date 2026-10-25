@@ -3,6 +3,7 @@ import { mdiArrowLeft, mdiCampfire, mdiDelete, mdiMapMarker } from '@mdi/js'
 import { LIcon, LMap, LMarker, LTileLayer } from '@maxel01/vue-leaflet'
 import { computed, onMounted, ref } from 'vue'
 import { remult } from 'remult'
+import type { VForm } from 'vuetify/components'
 import 'leaflet/dist/leaflet.css'
 import { Location, campTypes, campTypesToText, type campTypesType } from '@/shared/models/Location'
 import LoadError from '@/components/LoadError.vue'
@@ -10,7 +11,9 @@ import PhotoGallery from '@/components/PhotoGallery.vue'
 import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
 import { offline } from '@/scripts/connectivity'
+import { required, validateForm } from '@/scripts/forms'
 import { describeFailure } from '@/scripts/outbox'
+import { useUnsavedChanges } from '@/scripts/unsaved'
 import { getUser } from '@/scripts/user'
 import router from '@/router'
 
@@ -27,6 +30,17 @@ const location = ref<Location | null>(null)
 const saving = ref(false)
 const deleting = ref(false)
 const findingAddress = ref(false)
+const form = ref<VForm | null>(null)
+
+// Back to wherever the user came from (the map, search results...), or the
+// locations list when this page was opened directly.
+const backTo = (window.history.state?.back as string | null) ?? { name: 'locations' }
+
+// What's saved, to tell whether the form has unsaved edits.
+const savedState = ref('')
+let leaving = false
+const formState = () => location.value ? JSON.stringify(locationRepo.toJson(location.value)) : ''
+useUnsavedChanges(() => !leaving && !!location.value && formState() !== savedState.value)
 
 const campTypesText = campTypes.map(t => ({ title: campTypesToText(t as campTypesType), value: t }))
 
@@ -66,6 +80,7 @@ async function load() {
   loadError.value = false
   try {
     location.value = (await locationRepo.findOne({ where: { id: props.id, user: user.value! } })) ?? null
+    savedState.value = formState()
     if (hasPin.value)
       mapCenter.value = markerLatLng.value
   }
@@ -123,16 +138,13 @@ async function findAddress() {
 }
 
 async function save() {
-  if (!location.value)
+  if (!location.value || !await validateForm(form.value))
     return
-  if (!location.value.name.trim()) {
-    showAlert('Please enter a name for the location')
-    return
-  }
 
   saving.value = true
   try {
     await locationRepo.update(location.value.id, location.value)
+    savedState.value = formState()
     showAlert('Location updated')
   }
   catch (err) {
@@ -155,6 +167,7 @@ async function deleteLocation() {
   try {
     await locationRepo.delete(location.value)
     showAlert('Location deleted')
+    leaving = true
     router.push({ name: 'locations' })
   }
   catch (err) {
@@ -190,29 +203,32 @@ async function deleteLocation() {
 
       <v-card v-else>
         <v-card-title class="d-flex align-center ga-4">
-          <v-btn size="small" color="primary" @click="router.back()">
+          <v-btn icon color="primary" aria-label="Back" :to="backTo">
             <v-icon :icon="mdiArrowLeft" />
           </v-btn> {{ location.name }}
         </v-card-title>
 
         <v-card-text>
-          <div class="d-flex flex-column ga-6">
-            <v-text-field v-model="location.name" hide-details label="Name" required variant="solo-filled" />
+          <v-form ref="form" class="d-flex flex-column ga-6" @submit.prevent="save">
+            <v-text-field
+              v-model="location.name" hide-details="auto" label="Name" required variant="solo-filled"
+              :rules="[required('Please enter a name for the location')]"
+            />
             <v-combobox
               v-model="nicknamesArray" label="Nicknames" multiple chips closable-chips
               variant="solo-filled" hint="Alternate names to help you find this place later" persistent-hint
             />
-            <v-textarea v-model="location.notes" hide-details label="Notes" required variant="solo-filled" />
+            <v-textarea v-model="location.notes" hide-details label="Notes" variant="solo-filled" />
             <v-select
-              v-model="location.type" hide-details label="Type" required :items="campTypesText"
+              v-model="location.type" hide-details label="Type" :items="campTypesText"
               variant="solo-filled" :prepend-inner-icon="mdiCampfire"
             />
             <div class="d-flex align-center ga-4">
               <v-text-field
-                v-model="location.address" hide-details label="Address" required variant="solo-filled"
+                v-model="location.address" hide-details label="Address" variant="solo-filled"
                 :prepend-inner-icon="mdiMapMarker"
               />
-              <v-btn size="large" color="primary" :disabled="findDisabled" @click="findAddress">
+              <v-btn size="large" color="primary" :loading="findingAddress" :disabled="findDisabled" @click="findAddress">
                 Find
               </v-btn>
             </div>
@@ -228,7 +244,7 @@ async function deleteLocation() {
                   <LMarker :lat-lng="markerLatLng" draggable @update:lat-lng="onMarkerMove">
                     <LIcon class-name="location-marker-icon" :icon-size="[30, 30]" :icon-anchor="[15, 15]">
                       <div class="location-pin">
-                        <svg viewBox="0 0 24 24"><path :d="mdiMapMarker" /></svg>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path :d="mdiMapMarker" /></svg>
                       </div>
                     </LIcon>
                   </LMarker>
@@ -245,7 +261,7 @@ async function deleteLocation() {
             </div>
 
             <div class="d-flex ga-4">
-              <v-btn color="primary" :loading="saving" @click="save">
+              <v-btn type="submit" color="primary" :loading="saving">
                 Save
               </v-btn>
               <v-btn color="error" :prepend-icon="mdiDelete" :loading="deleting" @click="deleteLocation">
@@ -255,7 +271,7 @@ async function deleteLocation() {
 
             <v-divider />
             <PhotoGallery :location-id="location.id" />
-          </div>
+          </v-form>
         </v-card-text>
       </v-card>
     </v-col>
@@ -273,8 +289,8 @@ async function deleteLocation() {
 
 .map-hint {
   margin-top: 4px;
-  font-size: 12px;
-  opacity: 0.7;
+  font-size: 14px;
+  opacity: 0.87;
 }
 
 .location-marker-icon {

@@ -30,9 +30,9 @@ function formatDate(value: Date) {
         :prepend-inner-icon="mdiCalendar"
         :model-value="value"
         :label="label"
+        :rules="rules"
         variant="solo-filled"
-        density="compact"
-        hide-details
+        hide-details="auto"
         readonly
       />
     </template>

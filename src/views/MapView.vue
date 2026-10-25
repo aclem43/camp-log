@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { mdiTent } from '@mdi/js'
+import { mdiChevronDown, mdiChevronUp, mdiTent } from '@mdi/js'
 
 import 'leaflet/dist/leaflet.css'
 import { LControlLayers, LIcon, LLayerGroup, LMap, LMarker, LPopup, LTileLayer } from '@maxel01/vue-leaflet'
 import { computed, onActivated, ref } from 'vue'
 import { remult } from 'remult'
 import { useRoute } from 'vue-router'
+import { useDisplay } from 'vuetify'
 import LoadError from '@/components/LoadError.vue'
+import { useRouteQuery } from '@/scripts/routeQuery'
 import { getUser } from '@/scripts/user'
 import { Location, campTypes, campTypesToColor, campTypesToText, type campTypesType } from '@/shared/models/Location'
 import { LogLocation } from '@/shared/models/LogLocation'
@@ -14,6 +16,7 @@ import { LogLocation } from '@/shared/models/LogLocation'
 defineOptions({ name: 'MapView' })
 
 const route = useRoute()
+const { mobile } = useDisplay()
 
 const zoom = ref(6)
 const center = ref<[number, number]>([47.41322, -1.219482])
@@ -21,12 +24,21 @@ const focusedLocationId = ref<number | null>(null)
 
 const locations = ref<Location[]>([])
 const locationIdsWithLogs = ref<Set<number>>(new Set())
-const onlyWithLogs = ref(false)
-const onlyCampgrounds = ref(false)
+const onlyWithLogs = useRouteQuery('withLogs', false)
+const onlyCampgrounds = useRouteQuery('campgrounds', false)
+// Collapsed on phones, where it would cover much of the map.
+const legendOpen = ref(!mobile.value)
 const loadError = ref(false)
 const locationRepo = remult.repo(Location)
 const logLocationRepo = remult.repo(LogLocation)
 const user = getUser()
+
+// LMap takes its view from the props it had when it was set up, then loads
+// Leaflet - a center set while that's loading (the locations came back
+// first) would be lost, leaving the map on the default center.
+function onMapReady(map: { setView: (center: [number, number], zoom: number) => void }) {
+  map.setView(center.value, zoom.value)
+}
 
 const visibleLocations = computed(() => {
   let result = locations.value
@@ -75,7 +87,7 @@ onActivated(load)
 
 <template>
   <div style="height: 100%; width: 100%; position: relative;">
-    <LMap v-model:zoom="zoom" :center="center">
+    <LMap v-model:zoom="zoom" :center="center" @ready="onMapReady">
       <LTileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         layer-type="base"
@@ -112,11 +124,15 @@ onActivated(load)
               :class="{ 'location-pin-focused': loc.id === focusedLocationId }"
               :style="{ backgroundColor: campTypesToColor(loc.type) }"
             >
-              <svg viewBox="0 0 24 24"><path :d="mdiTent" /></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path :d="mdiTent" /></svg>
             </div>
           </LIcon>
           <LPopup>
-            <strong>{{ loc.name }}</strong><br>{{ loc.address }}<br>
+            <strong>{{ loc.name }}</strong><br>
+            {{ campTypesToText(loc.type) }}<br>
+            <template v-if="loc.address">
+              {{ loc.address }}<br>
+            </template>
             <router-link :to="{ name: 'location', params: { id: loc.id } }">
               View / Edit
             </router-link>
@@ -128,25 +144,31 @@ onActivated(load)
     <LoadError v-if="loadError" what="your locations" class="map-error" @retry="load" />
 
     <div class="map-legend">
-      <v-switch
-        v-model="onlyWithLogs"
-        label="Only show locations with logs"
-        color="primary"
-        density="compact"
-        hide-details
-        class="map-legend-filter"
-      />
-      <v-switch
-        v-model="onlyCampgrounds"
-        label="Only show campgrounds"
-        color="primary"
-        density="compact"
-        hide-details
-        class="map-legend-filter"
-      />
-      <div v-for="type in campTypes" :key="type" class="map-legend-item">
-        <span class="map-legend-swatch" :style="{ backgroundColor: campTypesToColor(type as campTypesType) }" />
-        {{ campTypesToText(type as campTypesType) }}
+      <v-btn
+        variant="text" class="map-legend-toggle" :append-icon="legendOpen ? mdiChevronDown : mdiChevronUp"
+        :aria-expanded="legendOpen" aria-controls="map-legend-body" @click="legendOpen = !legendOpen"
+      >
+        Filters &amp; legend
+      </v-btn>
+      <div v-show="legendOpen" id="map-legend-body" class="map-legend-body">
+        <v-switch
+          v-model="onlyWithLogs"
+          label="Only show locations with logs"
+          color="primary"
+          hide-details
+          class="map-legend-filter"
+        />
+        <v-switch
+          v-model="onlyCampgrounds"
+          label="Only show campgrounds"
+          color="primary"
+          hide-details
+          class="map-legend-filter"
+        />
+        <div v-for="type in campTypes" :key="type" class="map-legend-item">
+          <span class="map-legend-swatch" :style="{ backgroundColor: campTypesToColor(type as campTypesType) }" />
+          {{ campTypesToText(type as campTypesType) }}
+        </div>
       </div>
     </div>
   </div>
@@ -213,6 +235,16 @@ onActivated(load)
   color: rgb(var(--v-theme-on-surface));
   font-size: 13px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.map-legend-toggle {
+  justify-content: space-between;
+}
+
+.map-legend-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .map-legend-item {

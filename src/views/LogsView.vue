@@ -10,6 +10,7 @@ import { getUser } from '@/scripts/user'
 import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
 import { describeFailure, pendingItems, removePending } from '@/scripts/outbox'
+import { useRouteQuery } from '@/scripts/routeQuery'
 import { retrySync } from '@/scripts/sync'
 
 interface PendingLogRow {
@@ -36,9 +37,9 @@ const sortOptions: { title: string, value: SortOrder }[] = [
 
 const logs = ref<Log[]>([])
 const locationsByLogId = ref<Map<number, Location[]>>(new Map())
-const page = ref(1)
-const search = ref('')
-const sortOrder = ref<SortOrder>('dateDesc')
+const page = useRouteQuery('page', 1)
+const search = useRouteQuery('q', '')
+const sortOrder = useRouteQuery<SortOrder>('sort', 'dateDesc')
 const loading = ref(true)
 const loadError = ref(false)
 const deletingId = ref<number | null>(null)
@@ -139,7 +140,8 @@ watch([search, sortOrder], () => {
 })
 
 watch(pageCount, (count) => {
-  if (page.value > count)
+  // Not while loading, or a page from the URL would be lost before the logs arrive.
+  if (!loading.value && page.value > count)
     page.value = count
 })
 
@@ -174,7 +176,6 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
             label="Filter"
             placeholder="Search name, description, or location"
             variant="solo-filled"
-            density="compact"
             hide-details
             clearable
             :prepend-inner-icon="mdiMagnify"
@@ -184,7 +185,6 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
             v-model="sortOrder"
             label="Sort by"
             variant="solo-filled"
-            density="compact"
             hide-details
             :items="sortOptions"
             style="min-width: 180px; flex: 1 1 180px;"
@@ -214,7 +214,6 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
             <v-chip
               v-else-if="item.pending && item.pendingStatus === 'failed'"
               size="small" color="error" variant="tonal"
-              :title="item.pendingError"
             >
               Sync failed
             </v-chip>
@@ -222,27 +221,30 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
             <div v-if="item.pending" class="d-flex ga-2">
               <v-btn
                 v-if="item.pendingStatus === 'failed'"
-                density="compact" color="primary" title="Retry sync"
+                icon color="primary" title="Retry sync" aria-label="Retry sync"
                 @click="retrySync(item.pendingId)"
               >
                 <v-icon :icon="mdiSync" />
               </v-btn>
-              <v-btn density="compact" color="error" title="Discard" @click="discardPending(item.pendingId)">
+              <v-btn icon color="error" title="Discard" aria-label="Discard" @click="discardPending(item.pendingId)">
                 <v-icon :icon="mdiCloseCircle" />
               </v-btn>
             </div>
             <div v-else class="d-flex ga-2">
-              <v-btn density="compact" color="primary" title="View" :to="`/log/${item.id}`">
+              <v-btn icon color="primary" title="View" :aria-label="`View ${item.name}`" :to="`/log/${item.id}`">
                 <v-icon :icon="mdiEye" />
               </v-btn>
               <v-btn
-                density="compact" color="error" title="Delete" :loading="deletingId === item.id"
+                icon color="error" title="Delete" :aria-label="`Delete ${item.name}`" :loading="deletingId === item.id"
                 @click="deleteLog(item)"
               >
                 <v-icon :icon="mdiDelete" />
               </v-btn>
             </div>
           </v-card-title>
+          <v-card-text v-if="item.pending && item.pendingStatus === 'failed'" class="text-error pb-0">
+            Sync failed: {{ item.pendingError || 'unknown error' }}
+          </v-card-text>
           <v-card-subtitle>
             {{ item.dateStart?.toLocaleDateString() }}<template v-if="item.dateEnd">
               to {{ item.dateEnd.toLocaleDateString() }}

@@ -131,28 +131,23 @@ async function importRows() {
             {{ validRows().length }} of {{ rows.length }} rows ready to import.
           </p>
 
-          <v-table density="compact">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Latitude</th>
-                <th>Longitude</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(row, index) in rows" :key="index">
-                <td>{{ row.name }}</td>
-                <td>{{ row.latitude }}</td>
-                <td>{{ row.longitude }}</td>
-                <td>
-                  <span v-if="row.error" class="text-error">{{ row.error }}</span>
-                  <span v-else-if="row.importError" class="text-error">{{ row.importError }}</span>
-                  <span v-else class="text-success">OK</span>
-                </td>
-              </tr>
-            </tbody>
-          </v-table>
+          <!-- Paginated - a My Maps export can have thousands of rows. -->
+          <v-data-table
+            :headers="[
+              { title: 'Name', key: 'name' },
+              { title: 'Latitude', key: 'latitude' },
+              { title: 'Longitude', key: 'longitude' },
+              { title: 'Status', key: 'status', sortable: false },
+            ]"
+            :items="rows"
+            :items-per-page="10"
+          >
+            <template #[`item.status`]="{ item }">
+              <span v-if="item.error" class="text-error">{{ item.error }}</span>
+              <span v-else-if="item.importError" class="text-error">{{ item.importError }}</span>
+              <span v-else class="text-success">OK</span>
+            </template>
+          </v-data-table>
         </div>
 
         <p v-if="offline && rows.length" class="text-medium-emphasis">
