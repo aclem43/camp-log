@@ -1,5 +1,49 @@
 # Changelog
 
+## 1.4.0 (2026-10-25)
+
+### Features
+
+* Leaving a page with unsaved changes now asks you to confirm first, and Start Over asks before clearing what you've entered.
+* Your searches, filters and current page on Logs, Search, Import, Map, Locations and Settings are now kept when you go back or refresh, and can be bookmarked.
+* Logs saved offline can now use a location you also added offline.
+* Logs that haven't synced yet now show on the Home page, along with their end date.
+* The map legend can now be collapsed.
+* Find now shows its progress.
+
+### Bug Fixes
+
+* Fixed the map showing no map tiles on the live site.
+* Fixed the map not centring on your locations when they loaded before the map did.
+* Fixed the date field showing a date that wasn't actually saved with the log.
+* Logs can no longer be saved with an end date before the start date, including from Terrain imports.
+* Signing out with unsynced changes now warns you first, and those changes can no longer sync into the next account that signs in on the same device.
+* Retrying a Terrain import no longer creates duplicate locations or logs. Rows that fail stay on screen so you can retry or skip them, and failed campsite links are now reported.
+* Fixed CSV imports losing the rows they hadn't imported yet when the connection drops. CSV import is now unavailable while offline.
+* Fixed forms, including Add Activity, Login and Register, being submitted twice on a double tap. Add Activity now clears after adding.
+* Fixed a location's address sometimes being looked up for where the pin used to be after you moved it.
+* Locations can no longer be saved without a name.
+* Pages that fail to load now show an error with a Retry button, instead of loading forever or wrongly appearing empty.
+* Failed saves and deletes now say why they failed, and sync failures show the reason on the page.
+* Fixed the page occasionally going blank when saving a log or searching for a location.
+* Form errors now show next to the field and jump you to the first problem.
+* Dates now show in your local format, and stats are rounded and show their units.
+* Export Data, Find and Add Photos now explain why they're unavailable when you're offline.
+* Finding your current location now gives up instead of waiting forever, and tells you if location access is blocked.
+* The bottom bar no longer sits under the phone's home indicator, and the offline banner no longer gets cut off on narrow screens.
+* Hints on the map and nickname fields are now visible, and hint text is easier to read.
+
+### Accessibility
+
+* Buttons and links are easier to tap on phones.
+* Screen readers now announce button names, photo descriptions, camp types, activity values with their units, and changes to the sync status.
+* Photos can now be opened with the keyboard, and Home page items and Back work as normal links.
+
+### Performance
+
+* Photos uploaded from now on load faster in galleries.
+* Previews of large CSV files are now split into pages, so they open faster.
+
 ## 1.3.0 (2026-10-25)
 
 ### Features
