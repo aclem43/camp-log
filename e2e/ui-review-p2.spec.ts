@@ -21,7 +21,8 @@ test.describe('screen readers and keyboard', () => {
     const log = await createLog(page, { name: 'Named Log', locationIds: [location.id] })
 
     await visit(page, '/locations')
-    await expect(page.getByRole('link', { name: 'View Named Camp' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Named Camp', exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Show Named Camp on map' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Delete Named Camp' })).toBeVisible()
 
     await visit(page, '/logs')
@@ -117,7 +118,7 @@ test.describe('screen readers and keyboard', () => {
 })
 
 test.describe('touch', () => {
-  test('list actions and table rows are at least 44px', async ({ page }) => {
+  test('list actions and location names are at least 44px', async ({ page }) => {
     await signUp(page)
     const location = await createLocation(page, { name: 'Tap Camp' })
     await createLog(page, { name: 'Tap Log', locationIds: [location.id] })
@@ -132,8 +133,8 @@ test.describe('touch', () => {
     expect(filter!.height).toBeGreaterThanOrEqual(44)
 
     await visit(page, '/locations')
-    const row = await page.getByRole('row', { name: /Tap Camp/ }).boundingBox()
-    expect(row!.height).toBeGreaterThanOrEqual(44)
+    const name = await page.getByRole('link', { name: 'Tap Camp', exact: true }).boundingBox()
+    expect(name!.height).toBeGreaterThanOrEqual(44)
   })
 
   test('the map legend collapses on phones', async ({ page }) => {
@@ -359,10 +360,11 @@ test.describe('state in the URL', () => {
     await expect(page.getByLabel('Only show campgrounds')).toBeChecked()
 
     await visit(page, '/locations')
-    await page.getByRole('columnheader', { name: 'Name', exact: true }).click()
-    await expect(page).toHaveURL(/sort=name(%3A|:)desc/)
+    await page.locator('.v-select', { hasText: 'Sort by' }).locator('.v-field').click()
+    await page.getByRole('option', { name: 'Name (Z-A)' }).click()
+    await expect(page).toHaveURL(/sort=nameDesc/)
     await page.reload()
-    await expect(page.getByRole('row').nth(1)).toContainText('Zulu')
+    await expect(page.locator('.v-card').first()).toContainText('Zulu')
 
     await visit(page, '/settings')
     await page.getByText('Data', { exact: true }).click()
