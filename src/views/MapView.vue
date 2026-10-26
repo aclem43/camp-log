@@ -21,6 +21,9 @@ const { mobile } = useDisplay()
 const zoom = ref(6)
 const center = ref<[number, number]>([47.41322, -1.219482])
 const focusedLocationId = ref<number | null>(null)
+// Centred on the user's locations once; after that the view is left where
+// they panned and zoomed it (the map stays alive between visits).
+let centred = false
 
 const locations = ref<Location[]>([])
 const locationIdsWithLogs = ref<Set<number>>(new Set())
@@ -77,9 +80,11 @@ async function load() {
   }
   else {
     focusedLocationId.value = null
-    if (locations.value.length)
+    if (!centred && locations.value.length)
       center.value = [locations.value[0].latitude!, locations.value[0].longitude!]
   }
+  if (locations.value.length)
+    centred = true
 }
 
 onActivated(load)
@@ -273,8 +278,11 @@ onActivated(load)
   box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
 }
 
+/* Prefixed to outrank leaflet.css, whichever order the two load in. */
 .leaflet-control-layers,
-.leaflet-bar a {
+.leaflet-bar a,
+.leaflet-container .leaflet-popup-content-wrapper,
+.leaflet-container .leaflet-popup-tip {
   background: rgb(var(--v-theme-surface));
   color: rgb(var(--v-theme-on-surface));
 }
@@ -295,6 +303,10 @@ onActivated(load)
 
 .leaflet-control-layers-separator {
   border-color: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 20%, transparent);
+}
+
+.leaflet-container .leaflet-popup-content a {
+  color: rgb(var(--v-theme-primary));
 }
 
 .v-theme--dark .leaflet-control-layers-toggle {

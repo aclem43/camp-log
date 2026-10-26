@@ -91,16 +91,17 @@ onMounted(load)
             :loading="loading"
             :headers="[
               { title: 'Statistic', value: 'label' },
-              { title: 'Value', value: 'value' },
+              { title: 'Value', value: 'value', align: 'end' },
             ]"
             :items="loading ? [] : rows"
-            :items-per-page="5"
+            :items-per-page="-1"
+            hide-default-footer
           >
             <template #[`item.label`]="{ item }">
               {{ item.label }}
             </template>
             <template #[`item.value`]="{ item }">
-              {{ item.value }}
+              <span class="tabular-nums">{{ item.value }}</span>
             </template>
           </v-data-table>
         </v-card-text>
@@ -108,3 +109,9 @@ onMounted(load)
     </v-col>
   </v-container>
 </template>
+
+<style scoped>
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+</style>

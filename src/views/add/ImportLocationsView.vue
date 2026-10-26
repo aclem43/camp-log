@@ -118,7 +118,7 @@ async function importRows() {
       <div class="d-flex flex-column ga-6">
         <p>
           Import a CSV exported from Google My Maps (columns: <code>WKT</code>, <code>name</code>, <code>description</code>).
-          Imported locations are given the type "Unknown" — you can edit them individually afterwards.
+          Imported locations are given the type “Unknown” — you can edit them individually afterwards.
         </p>
 
         <v-file-input
@@ -142,6 +142,12 @@ async function importRows() {
             :items="rows"
             :items-per-page="10"
           >
+            <template #[`item.latitude`]="{ item }">
+              <span class="tabular-nums">{{ item.latitude?.toFixed(5) ?? '—' }}</span>
+            </template>
+            <template #[`item.longitude`]="{ item }">
+              <span class="tabular-nums">{{ item.longitude?.toFixed(5) ?? '—' }}</span>
+            </template>
             <template #[`item.status`]="{ item }">
               <span v-if="item.error" class="text-error">{{ item.error }}</span>
               <span v-else-if="item.importError" class="text-error">{{ item.importError }}</span>
@@ -163,3 +169,9 @@ async function importRows() {
     </v-card-text>
   </v-card>
 </template>
+
+<style scoped>
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+</style>

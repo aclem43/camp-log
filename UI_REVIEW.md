@@ -159,45 +159,45 @@ Put this state in the route query so back and reload keep it:
 
 ### Long and empty content
 
-- [ ] Long names are clipped mid-word in a `v-card-title` that doesn't wrap. Fix: a `text-truncate` span with `min-width: 0`.
+- [x] Long names are clipped mid-word in a `v-card-title` that doesn't wrap. Fix: a `text-truncate` span with `min-width: 0`.
   [HomeView.vue:63](src/views/HomeView.vue#L63) · [LogsView.vue:175](src/views/LogsView.vue#L175) · [LogView.vue:221](src/views/LogView.vue#L221) · [LocationView.vue:164](src/views/LocationView.vue#L164)
-- [ ] The log card subtitle (dates plus location links) is cut to one line on phones. [LogsView.vue:211](src/views/LogsView.vue#L211)
-- [ ] The Terrain error chip doesn't wrap and clips long messages. [ImportLogsView.vue:467](src/views/add/ImportLogsView.vue#L467)
-- [ ] Empty parts are joined anyway, e.g. "City: , State: …" and ", , Australia". Use `filter(Boolean).join(', ')`. [AddLocationView.vue:308](src/views/add/AddLocationView.vue#L308) · [ImportLogsView.vue:587](src/views/add/ImportLogsView.vue#L587)
-- [ ] The Locations Notes column shows the full text; clamp it. [LocationsView.vue:89](src/views/LocationsView.vue#L89)
-- [ ] Missing empty states: Locations table, which needs `no-data-text` ([LocationsView.vue:84](src/views/LocationsView.vue#L84)); activity templates ([SettingsView.vue:241](src/views/SettingsView.vue#L241))
-- [ ] City/State/Country are in one row that doesn't wrap, ~95 px each at 360 px. [LocationView.vue:208](src/views/LocationView.vue#L208)
+- [x] The log card subtitle (dates plus location links) is cut to one line on phones. [LogsView.vue:211](src/views/LogsView.vue#L211)
+- [x] The Terrain error chip doesn't wrap and clips long messages. [ImportLogsView.vue:467](src/views/add/ImportLogsView.vue#L467)
+- [x] Empty parts are joined anyway, e.g. "City: , State: …" and ", , Australia". Use `filter(Boolean).join(', ')`. [AddLocationView.vue:308](src/views/add/AddLocationView.vue#L308) · [ImportLogsView.vue:587](src/views/add/ImportLogsView.vue#L587)
+- [x] The Locations Notes column shows the full text; clamp it. [LocationsView.vue:89](src/views/LocationsView.vue#L89)
+- [x] Missing empty states: Locations table, which needs `no-data-text` ([LocationsView.vue:84](src/views/LocationsView.vue#L84)); activity templates ([SettingsView.vue:241](src/views/SettingsView.vue#L241))
+- [x] City/State/Country are in one row that doesn't wrap, ~95 px each at 360 px. [LocationView.vue:208](src/views/LocationView.vue#L208)
 
 ### Typography and copy
 
-- [ ] Straight apostrophes and quotes in copy, to replace with ’ “ ”:
+- [x] Straight apostrophes and quotes in copy, to replace with ’ “ ”:
   - [OnlineStatusBanner.vue:14](src/components/OnlineStatusBanner.vue#L14) · [PhotoGallery.vue:153](src/components/PhotoGallery.vue#L153)
   - [HomeView.vue:100](src/views/HomeView.vue#L100), 111, 132, 143 · [LogView.vue:198](src/views/LogView.vue#L198) · [SearchView.vue:174](src/views/SearchView.vue#L174)
   - [AddLogView.vue:124](src/views/add/AddLogView.vue#L124) · [AddLocationView.vue:240](src/views/add/AddLocationView.vue#L240) · [ImportLocationsView.vue:105](src/views/add/ImportLocationsView.vue#L105) · [ImportLogsView.vue:547](src/views/add/ImportLogsView.vue#L547)
   - [RegisterView.vue:14](src/views/user/RegisterView.vue#L14)
-- [ ] The location list renders "Lake , River" (space before the comma). [LogsView.vue:221](src/views/LogsView.vue#L221)
-- [ ] Date ranges use "to" here and "–" in SearchView; pick one. [LogsView.vue:213](src/views/LogsView.vue#L213) · [SearchView.vue:35](src/views/SearchView.vue#L35)
-- [ ] `'Loading'` → `'Loading…'`. [SettingsView.vue:26](src/views/SettingsView.vue#L26)
-- [ ] Placeholders don't end with `…`. [LogsView.vue:147](src/views/LogsView.vue#L147) · [SettingsView.vue:263](src/views/SettingsView.vue#L263)
-- [ ] "12000m" has no space and should probably be km; use `&nbsp;`. [ImportLogsView.vue:123](src/views/add/ImportLogsView.vue#L123) · [ImportLogsView.vue:492](src/views/add/ImportLogsView.vue#L492)
-- [ ] "location(s) … entrie(s)": use proper plurals (and "entrie" is a typo). [SettingsView.vue:163](src/views/SettingsView.vue#L163)
-- [ ] "Login" and "Sign in with Google" on the same screen; use one term. [LoginView.vue:25](src/views/user/LoginView.vue#L25)
-- [ ] "Click the map" → "Tap the map". [AddLocationView.vue:300](src/views/add/AddLocationView.vue#L300)
+- [x] The location list renders "Lake , River" (space before the comma). [LogsView.vue:221](src/views/LogsView.vue#L221)
+- [x] Date ranges use "to" here and "–" in SearchView; pick one. [LogsView.vue:213](src/views/LogsView.vue#L213) · [SearchView.vue:35](src/views/SearchView.vue#L35)
+- [x] `'Loading'` → `'Loading…'`. [SettingsView.vue:26](src/views/SettingsView.vue#L26)
+- [x] Placeholders don't end with `…`. [LogsView.vue:147](src/views/LogsView.vue#L147) · [SettingsView.vue:263](src/views/SettingsView.vue#L263)
+- [x] "12000m" has no space and should probably be km; use `&nbsp;`. [ImportLogsView.vue:123](src/views/add/ImportLogsView.vue#L123) · [ImportLogsView.vue:492](src/views/add/ImportLogsView.vue#L492)
+- [x] "location(s) … entrie(s)": use proper plurals (and "entrie" is a typo). [SettingsView.vue:163](src/views/SettingsView.vue#L163)
+- [x] "Login" and "Sign in with Google" on the same screen; use one term. [LoginView.vue:25](src/views/user/LoginView.vue#L25)
+- [x] "Click the map" → "Tap the map". [AddLocationView.vue:300](src/views/add/AddLocationView.vue#L300)
 
 ### Input attributes
 
-- [ ] Add `autocomplete="off"` to "Name" fields, where browsers offer the user's personal name: [LogView.vue:226](src/views/LogView.vue#L226) · [LocationView.vue:169](src/views/LocationView.vue#L169) · [AddLogView.vue:138](src/views/add/AddLogView.vue#L138) · [AddLocationView.vue:255](src/views/add/AddLocationView.vue#L255) · [SettingsView.vue:256](src/views/SettingsView.vue#L256)
-- [ ] Add `spellcheck="false"` to email and member number fields: [LoginView.vue:29](src/views/user/LoginView.vue#L29) · [RegisterView.vue:36](src/views/user/RegisterView.vue#L36) · [ImportLogsView.vue:410](src/views/add/ImportLogsView.vue#L410)
-- [ ] Add `inputmode="decimal"` to activity values: [LogView.vue:289](src/views/LogView.vue#L289) · [AddLogView.vue:224](src/views/add/AddLogView.vue#L224)
+- [x] Add `autocomplete="off"` to "Name" fields, where browsers offer the user's personal name: [LogView.vue:226](src/views/LogView.vue#L226) · [LocationView.vue:169](src/views/LocationView.vue#L169) · [AddLogView.vue:138](src/views/add/AddLogView.vue#L138) · [AddLocationView.vue:255](src/views/add/AddLocationView.vue#L255) · [SettingsView.vue:256](src/views/SettingsView.vue#L256)
+- [x] Add `spellcheck="false"` to email and member number fields: [LoginView.vue:29](src/views/user/LoginView.vue#L29) · [RegisterView.vue:36](src/views/user/RegisterView.vue#L36) · [ImportLogsView.vue:410](src/views/add/ImportLogsView.vue#L410)
+- [x] Add `inputmode="decimal"` to activity values: [LogView.vue:289](src/views/LogView.vue#L289) · [AddLogView.vue:224](src/views/add/AddLogView.vue#L224)
   - Leave latitude/longitude as `type="number"`: the iOS decimal pad has no minus key, so negative coordinates couldn't be typed.
 
 ### Misc
 
-- [ ] The Map re-centres on every visit, which discards the user's pan/zoom. [MapView.vue:58](src/views/MapView.vue#L58)
-- [ ] Map popups stay white in dark mode while the controls are themed; an empty address leaves a blank line. [MapView.vue:106](src/views/MapView.vue#L106)
-- [ ] The snackbar Close button uses CSS `red`, which reads as danger and has weak contrast. [App.vue:35](src/App.vue#L35)
-- [ ] Stats: 5 rows per page hides most stats, and the value column has no `tabular-nums`. [StatsView.vue:69](src/views/StatsView.vue#L69)
-- [ ] CSV preview shows raw latitude/longitude; use `toFixed(5)` and `tabular-nums`. [ImportLocationsView.vue:130](src/views/add/ImportLocationsView.vue#L130)
-- [ ] Imported Terrain rows still have editable date pickers, and the edits are ignored. [ImportLogsView.vue:497](src/views/add/ImportLogsView.vue#L497)
+- [x] The Map re-centres on every visit, which discards the user's pan/zoom. [MapView.vue:58](src/views/MapView.vue#L58)
+- [x] Map popups stay white in dark mode while the controls are themed; an empty address leaves a blank line. [MapView.vue:106](src/views/MapView.vue#L106)
+- [x] The snackbar Close button uses CSS `red`, which reads as danger and has weak contrast. [App.vue:35](src/App.vue#L35)
+- [x] Stats: 5 rows per page hides most stats, and the value column has no `tabular-nums`. [StatsView.vue:69](src/views/StatsView.vue#L69)
+- [x] CSV preview shows raw latitude/longitude; use `toFixed(5)` and `tabular-nums`. [ImportLocationsView.vue:130](src/views/add/ImportLocationsView.vue#L130)
+- [x] Imported Terrain rows still have editable date pickers, and the edits are ignored. [ImportLogsView.vue:497](src/views/add/ImportLogsView.vue#L497)
 
 No findings: `ConfirmDialog.vue`.

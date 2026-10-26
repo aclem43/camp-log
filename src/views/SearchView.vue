@@ -7,6 +7,7 @@ import { useDebounceFn } from '@vueuse/core'
 import { Log } from '@/shared/models/Log'
 import { Location, campTypes, campTypesToColor, campTypesToText, type campTypesType } from '@/shared/models/Location'
 import LoadError from '@/components/LoadError.vue'
+import { formatDateRange } from '@/scripts/dates'
 import { useRouteQuery } from '@/scripts/routeQuery'
 import { getUser } from '@/scripts/user'
 
@@ -36,12 +37,9 @@ const locationRepo = remult.repo(Location)
 const user = getUser()
 
 function logToSearchResult(log: Log): SearchResult {
-  const subtitle = log.dateEnd && log.dateEnd.getTime() !== log.dateStart.getTime()
-    ? `${log.dateStart.toLocaleDateString()} – ${log.dateEnd.toLocaleDateString()}`
-    : log.dateStart.toLocaleDateString()
   return {
     title: log.name,
-    subtitle: `Log · ${subtitle}`,
+    subtitle: `Log · ${formatDateRange(log.dateStart, log.dateEnd)}`,
     icon: mdiCampfire,
     color: LOG_COLOR,
     id: log.id,
@@ -194,7 +192,7 @@ watch(() => selectedTypes.value.join(','), () => searchQuery(), { immediate: tru
             </v-list-item>
             <v-list-item
               v-if="searchResults.length === 0"
-              :title="search ? `No results found for &quot;${search}&quot;` : 'No logs or locations found'"
+              :title="search ? `No results found for “${search}”` : 'No logs or locations found'"
             />
           </template>
         </v-list>

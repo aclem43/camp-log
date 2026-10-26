@@ -212,7 +212,7 @@ async function addLog() {
 
 async function queueLogOffline(input: QueuedLogInput) {
   await queueMutation('log', { ...input })
-  showAlert('Saved offline — will sync when you\'re back online.')
+  showAlert('Saved offline — will sync when you’re back online.')
   leaveForLogs()
 }
 </script>
@@ -230,6 +230,7 @@ async function queueLogOffline(input: QueuedLogInput) {
             <v-text-field
               v-model="log.name"
               label="Name"
+              autocomplete="off"
               required
               variant="solo-filled"
               :rules="[required('Name is required')]"
@@ -327,6 +328,7 @@ async function queueLogOffline(input: QueuedLogInput) {
                       style="max-width: 300px;min-width: 100px"
                       hide-details
                       type="number"
+                      inputmode="decimal"
                     />
                     <v-btn
                       color="error"

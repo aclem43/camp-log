@@ -204,7 +204,7 @@ test.describe('forms', () => {
     await page.goto('/login')
     await page.getByLabel('Email').fill('nobody@example.com')
     await page.getByLabel('Password').fill('wrong-password')
-    const button = page.getByRole('button', { name: 'Login' })
+    const button = page.getByRole('button', { name: 'Sign In', exact: true })
     await button.click()
     await expect(button).toHaveClass(/v-btn--loading/)
     release()

@@ -32,7 +32,7 @@ async function submit() {
   <v-container>
     <v-card>
       <v-card-title>
-        Login
+        Sign In
       </v-card-title>
       <v-card-text>
         <v-form @submit.prevent="submit">
@@ -42,6 +42,7 @@ async function submit() {
             type="email"
             inputmode="email"
             autocomplete="email"
+            spellcheck="false"
             required
           />
           <v-text-field
@@ -57,7 +58,7 @@ async function submit() {
               type="submit"
               :loading="submitting"
             >
-              Login
+              Sign In
             </v-btn>
             <div>
               Not registered?

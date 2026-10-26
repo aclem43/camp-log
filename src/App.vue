@@ -32,7 +32,6 @@ const loggedIn = getLoggedIn()
       {{ alert.message }}
       <template #actions>
         <v-btn
-          color="red"
           variant="text"
           @click="alert.show = false"
         >

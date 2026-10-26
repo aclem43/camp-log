@@ -56,6 +56,7 @@ async function submit() {
             type="email"
             inputmode="email"
             autocomplete="email"
+            spellcheck="false"
             required
             :rules="[required('Email is required')]"
           />
@@ -88,7 +89,7 @@ async function submit() {
             <div>
               Already have an account?
               <router-link :to="{ name: 'login' }">
-                Login
+                Sign in
               </router-link>
             </div>
           </div>

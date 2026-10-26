@@ -32,6 +32,7 @@ const activity = ref<Omit<ActivityTemplate, 'id'>>({
   unit: '',
 })
 const user = getUser()
+const activitiesLoading = ref(true)
 const activitiesError = ref(false)
 async function loadActivities() {
   activitiesError.value = false
@@ -41,9 +42,17 @@ async function loadActivities() {
   catch {
     activitiesError.value = true
   }
+  finally {
+    activitiesLoading.value = false
+  }
 }
 
-const version = ref('Loading')
+// "1 log", "3 logs"
+function count(n: number, singular: string, plural = `${singular}s`) {
+  return `${n} ${n === 1 ? singular : plural}`
+}
+
+const version = ref('Loading…')
 const showChangelog = ref(false)
 
 interface ChangelogSection { title: string, items: string[] }
@@ -235,9 +244,9 @@ async function importData() {
     }
     const result = await response.json()
     showAlert(
-      `Imported ${result.locations} location(s), ${result.activityTemplates} template(s), `
-      + `${result.logs} log(s), ${result.activities} entrie(s)`
-      + `${result.skipped ? `, ${result.skipped} skipped (missing their log or activity)` : ''}`,
+      `Imported ${count(result.locations, 'location')}, ${count(result.activityTemplates, 'activity template')}, `
+      + `${count(result.logs, 'log')} and ${count(result.activities, 'activity entry', 'activity entries')}`
+      + `${result.skipped ? `. ${result.skipped} skipped (missing their log or activity)` : ''}`,
     )
     importFile.value = null
     await loadActivities()
@@ -314,6 +323,9 @@ async function importData() {
                       Current Activity Templates
                     </v-list-subheader>
                     <LoadError v-if="activitiesError" what="your activity templates" @retry="loadActivities" />
+                    <p v-else-if="!activitiesLoading && !activityTemplates.length" class="text-medium-emphasis px-4 mb-4">
+                      No activity templates yet. Add one below to start logging activities like hiking or paddling.
+                    </p>
                     <v-list-item v-for="act in activityTemplates" :key="act.id">
                       <v-list-item-title>
                         {{ act.name }}
@@ -330,7 +342,7 @@ async function importData() {
                     </v-list-item>
                   </v-list>
                   <v-form ref="activityForm" @submit.prevent="addActivity">
-                    <v-text-field v-model="activity.name" label="Name" required variant="solo-filled" :rules="[required('Name is required')]" />
+                    <v-text-field v-model="activity.name" label="Name" required variant="solo-filled" autocomplete="off" :rules="[required('Name is required')]" />
                     <v-text-field
                       v-model="activity.description" label="Description" required variant="solo-filled"
                       :rules="[required('Description is required')]"
@@ -340,7 +352,7 @@ async function importData() {
                       label="Units"
                       required
                       variant="solo-filled"
-                      :placeholder="profile.unitPreference === 'metric' ? 'e.g. km, kg' : 'e.g. mi, lb'"
+                      :placeholder="profile.unitPreference === 'metric' ? 'e.g. km, kg…' : 'e.g. mi, lb…'"
                       :rules="[required('Units are required')]"
                     />
                     <v-btn type="submit" color="primary" :loading="addingActivity">

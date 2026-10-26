@@ -23,6 +23,7 @@ function formatDate(value: Date) {
     :clearable="false"
     :enable-time-picker="false"
     :format="formatDate"
+    :readonly="readonly"
     @update:model-value="(value: Date | null) => date = value ? startOfDay(value) : undefined"
   >
     <template #dp-input="{ value }">

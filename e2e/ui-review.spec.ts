@@ -221,9 +221,9 @@ test.describe('online', () => {
     const map = page.locator('.location-map .leaflet-container')
     await map.click({ position: { x: 100, y: 100 } })
     await map.click({ position: { x: 200, y: 150 } })
-    await expect(page.getByText(/City: Newtown/)).toBeVisible()
+    await expect(page.getByText('Newtown, ACT, Australia')).toBeVisible()
     await page.waitForTimeout(2500) // let the slow first reply land
-    await expect(page.getByText(/City: Newtown/)).toBeVisible()
+    await expect(page.getByText('Newtown, ACT, Australia')).toBeVisible()
     await expect(page.getByLabel('Address')).toHaveValue('New St')
   })
 
@@ -368,7 +368,7 @@ test.describe('online', () => {
     await page.goto('/add/location')
     await page.getByRole('button', { name: 'Use My Current Location' }).click()
     await expect(page.getByText('Latitude: -35.28000')).toBeVisible()
-    await expect(page.getByText(/City: Canberra/)).toBeVisible()
+    await expect(page.getByText('Canberra', { exact: true })).toBeVisible()
   })
 
   test('P1: Export Data downloads online and explains itself offline', async ({ page, context }) => {
@@ -512,13 +512,18 @@ test.describe('offline with the service worker', () => {
     await page.getByLabel('Locations').click()
     await page.getByRole('option', { name: `${camp} (not synced yet)` }).click()
     await page.keyboard.press('Escape')
+    // A real multi-day trip: the 15th of next month is always after today.
+    await page.getByRole('textbox', { name: 'End Date' }).click()
+    await page.getByRole('button', { name: 'Next month' }).click()
+    await page.locator('.dp__calendar .dp__cell_inner:not(.dp__cell_offset)', { hasText: /^15$/ }).click()
+    await page.getByRole('button', { name: 'Select' }).click()
     await page.getByRole('button', { name: 'Add Log' }).click()
     await expect(page).toHaveURL(/\/logs$/)
 
     // Pending multi-day log shows its end date
     const card = page.locator('.v-card', { hasText: trip })
     await expect(card.getByText('Pending sync')).toBeVisible()
-    await expect(card.locator('.v-card-subtitle')).toContainText(' to ')
+    await expect(card.locator('.v-card-subtitle')).toContainText(' – ')
 
     // ... and appears on Home
     await page.locator('.v-navigation-drawer a[href="/"]').dispatchEvent('click')

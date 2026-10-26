@@ -250,13 +250,14 @@ onMounted(() => load())
         <v-card-title class="d-flex align-center ga-4">
           <v-btn icon color="primary" aria-label="Back" :to="backTo">
             <v-icon :icon="mdiArrowLeft" />
-          </v-btn> {{ log.name }}
+          </v-btn>
+          <span class="text-truncate" style="min-width: 0;">{{ log.name }}</span>
         </v-card-title>
 
         <v-card-text>
           <v-form ref="form" class="d-flex flex-column ga-6" @submit.prevent="save">
             <v-text-field
-              v-model="log.name" hide-details="auto" label="Name" required variant="solo-filled"
+              v-model="log.name" hide-details="auto" label="Name" required variant="solo-filled" autocomplete="off"
               :rules="[required('Name is required')]"
             />
             <v-textarea v-model="log.description" hide-details label="Description" variant="solo-filled" />
@@ -335,6 +336,7 @@ onMounted(() => load())
                       style="max-width: 300px;min-width: 100px"
                       hide-details
                       type="number"
+                      inputmode="decimal"
                     />
                     <v-btn color="error" @click="removeActivityRow(row)">
                       Remove
