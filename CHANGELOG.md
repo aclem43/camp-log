@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.4.1 (2026-10-26)
+
+### Bug Fixes
+
+* Fixed map tiles showing as "Access blocked", and old blocked tiles filling up storage on your device.
+* The map now remembers where you panned and zoomed when you come back to it, and map pop-ups now follow dark mode.
+* Long names now shorten neatly instead of being cut off mid-word, and long notes, log details and Terrain import errors now fit on screen.
+* Addresses now fit on phones and no longer show stray commas when part of the address is missing.
+* The Locations list and activity templates now show a message when they're empty.
+* Date ranges now look the same everywhere, and Terrain distances are shown in kilometres.
+* All stats now show on one page, with numbers lined up.
+* Dates on a Terrain log that's already been imported can no longer be changed in the import screen.
+* Name fields no longer offer unrelated autofill suggestions, email addresses and member numbers are no longer marked as misspelled, and activity values now bring up a number keypad.
+* Tidied up wording across the app, including "Sign In" on the login screen and correct singular/plural wording in import results.
+
 ## 1.4.0 (2026-10-25)
 
 ### Features
