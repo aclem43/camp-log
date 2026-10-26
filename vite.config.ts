@@ -71,17 +71,23 @@ export default defineConfig({
               },
             },
           },
+          // OSM tile layers set crossOrigin, so these are CORS responses with a
+          // real status. Opaque (no-cors) ones can't be told apart from a 403
+          // "Access blocked" tile, and Chrome counts each as ~7MB of quota,
+          // which overflowed storage. The old 'map-tiles' cache held those and
+          // is deleted in src/main.ts.
           {
-            urlPattern: /^https:\/\/[abc]\.tile\.openstreetmap\.org\//,
+            urlPattern: /^https:\/\/tile\.openstreetmap\.org\//,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'map-tiles',
+              cacheName: 'osm-tiles',
               expiration: {
                 maxEntries: 500,
                 maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                purgeOnQuotaError: true,
               },
               cacheableResponse: {
-                statuses: [0, 200],
+                statuses: [200],
               },
             },
           },

@@ -46,6 +46,7 @@ type LatLngTuple = [number, number]
 
 const hasPin = computed(() => location.value.latitude !== 0 || location.value.longitude !== 0)
 const markerLatLng = computed<LatLngTuple>(() => [location.value.latitude ?? 0, location.value.longitude ?? 0])
+const place = computed(() => [location.value.city, location.value.state, location.value.country].filter(Boolean).join(', '))
 
 const findDisabled = computed(() => {
   if (findingAddress.value || offline.value)
@@ -269,7 +270,7 @@ async function queueLocationOffline() {
   // IndexedDB (unlike the online path, which just JSON-serializes it).
   const { user: _user, ...payload } = toRaw(location.value)
   await queueMutation('location', payload)
-  showAlert('Saved offline — will sync when you\'re back online.')
+  showAlert('Saved offline — will sync when you’re back online.')
   leaveForLocations()
 }
 </script>
@@ -285,7 +286,7 @@ async function queueLocationOffline() {
         <v-card-text>
           <v-form ref="form" class="d-flex flex-column ga-6" @submit.prevent="addLog">
             <v-text-field
-              v-model="location.name" hide-details="auto" label="Name" required variant="solo-filled"
+              v-model="location.name" hide-details="auto" label="Name" required variant="solo-filled" autocomplete="off"
               :rules="[required('Please enter a name for the location')]"
             />
             <v-combobox
@@ -322,7 +323,7 @@ async function queueLocationOffline() {
             <div>
               <div class="location-map" :class="{ 'location-map--readonly': !showMapPicker }">
                 <LMap v-model:zoom="mapZoom" :center="mapCenter" @ready="onMapReady">
-                  <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" layer-type="base" name="OpenStreetMap" />
+                  <LTileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" :options="{ crossOrigin: true }" layer-type="base" name="OpenStreetMap" />
                   <LMarker v-if="hasPin" :lat-lng="markerLatLng" :draggable="showMapPicker" @update:lat-lng="onMarkerMove">
                     <LIcon class-name="location-marker-icon" :icon-size="[30, 30]" :icon-anchor="[15, 15]">
                       <div class="location-pin">
@@ -333,15 +334,15 @@ async function queueLocationOffline() {
                 </LMap>
               </div>
               <div class="map-hint">
-                {{ showMapPicker ? 'Click the map or drag the pin to fine-tune the location' : 'View only — enable editing to place or move the pin' }}
+                {{ showMapPicker ? 'Tap the map or drag the pin to fine-tune the location' : 'View only — enable editing to place or move the pin' }}
               </div>
             </div>
 
             <div v-if="hasPin" class="d-flex flex-column">
               <div>Latitude: {{ location.latitude?.toFixed(5) }}</div>
               <div>Longitude: {{ location.longitude?.toFixed(5) }}</div>
-              <div v-if="location.city || location.state || location.country">
-                City: {{ location.city }}, State: {{ location.state }}, Country: {{ location.country }}
+              <div v-if="place">
+                {{ place }}
               </div>
             </div>
 

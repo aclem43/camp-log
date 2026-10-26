@@ -205,13 +205,14 @@ async function deleteLocation() {
         <v-card-title class="d-flex align-center ga-4">
           <v-btn icon color="primary" aria-label="Back" :to="backTo">
             <v-icon :icon="mdiArrowLeft" />
-          </v-btn> {{ location.name }}
+          </v-btn>
+          <span class="text-truncate" style="min-width: 0;">{{ location.name }}</span>
         </v-card-title>
 
         <v-card-text>
           <v-form ref="form" class="d-flex flex-column ga-6" @submit.prevent="save">
             <v-text-field
-              v-model="location.name" hide-details="auto" label="Name" required variant="solo-filled"
+              v-model="location.name" hide-details="auto" label="Name" required variant="solo-filled" autocomplete="off"
               :rules="[required('Please enter a name for the location')]"
             />
             <v-combobox
@@ -240,7 +241,7 @@ async function deleteLocation() {
             <div v-if="hasPin">
               <div class="location-map">
                 <LMap v-model:zoom="mapZoom" :center="mapCenter">
-                  <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" layer-type="base" name="OpenStreetMap" />
+                  <LTileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" :options="{ crossOrigin: true }" layer-type="base" name="OpenStreetMap" />
                   <LMarker :lat-lng="markerLatLng" draggable @update:lat-lng="onMarkerMove">
                     <LIcon class-name="location-marker-icon" :icon-size="[30, 30]" :icon-anchor="[15, 15]">
                       <div class="location-pin">
@@ -254,10 +255,11 @@ async function deleteLocation() {
                 Drag the pin to fine-tune the location
               </div>
             </div>
-            <div class="d-flex ga-4">
-              <v-text-field v-model="location.city" hide-details label="City" variant="solo-filled" />
-              <v-text-field v-model="location.state" hide-details label="State" variant="solo-filled" />
-              <v-text-field v-model="location.country" hide-details label="Country" variant="solo-filled" />
+            <!-- Wraps on phones, where three in a row would be ~95px each. -->
+            <div class="d-flex flex-wrap ga-4">
+              <v-text-field v-model="location.city" hide-details label="City" variant="solo-filled" class="place-field" />
+              <v-text-field v-model="location.state" hide-details label="State" variant="solo-filled" class="place-field" />
+              <v-text-field v-model="location.country" hide-details label="Country" variant="solo-filled" class="place-field" />
             </div>
 
             <div class="d-flex ga-4">
@@ -285,6 +287,11 @@ async function deleteLocation() {
   position: relative;
   border-radius: 4px;
   overflow: hidden;
+}
+
+.place-field {
+  flex: 1 1 160px;
+  min-width: 160px;
 }
 
 .map-hint {

@@ -134,7 +134,13 @@ async function deleteLocation(location: Location) {
               ]"
               :items="rows"
               :items-per-page="5"
+              :no-data-text="loadError ? 'Locations couldn’t be loaded.' : 'No locations yet. Add one to see it here.'"
             >
+              <template #[`item.notes`]="{ item }">
+                <div class="notes-clamp" :title="item.notes">
+                  {{ item.notes }}
+                </div>
+              </template>
               <template #[`item.name`]="{ item }">
                 {{ item.name }}
                 <v-chip
@@ -184,3 +190,14 @@ async function deleteLocation(location: Location) {
     </v-row>
   </v-container>
 </template>
+
+<style scoped>
+.notes-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  max-width: 320px;
+}
+</style>

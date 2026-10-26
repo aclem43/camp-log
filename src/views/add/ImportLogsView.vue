@@ -115,6 +115,17 @@ function findMatchingLocation(locationText: string): Location | undefined {
   })
 }
 
+// Terrain records distances in metres.
+function formatDistance(metres: number) {
+  return metres >= 1000
+    ? `${(metres / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })}\u00A0km`
+    : `${metres.toLocaleString()}\u00A0m`
+}
+
+function draftPlace(draft: NewLocationDraft) {
+  return [draft.city, draft.state, draft.country].filter(Boolean).join(', ')
+}
+
 function buildDescription(entry: TerrainEntry): string {
   const d = entry.details ?? {}
   const lines: string[] = []
@@ -129,7 +140,7 @@ function buildDescription(entry: TerrainEntry): string {
   if (d.other_participants)
     lines.push(`Other participants: ${d.other_participants}`)
   if (entry.distance_travelled)
-    lines.push(`Distance travelled: ${entry.distance_travelled}m`)
+    lines.push(`Distance travelled: ${formatDistance(entry.distance_travelled)}`)
   if (d.verifier?.name)
     lines.push(`Verifier: ${d.verifier.name}${d.verifier.contact ? ` (${d.verifier.contact})` : ''}`)
   lines.push('Imported from Scouts Terrain logbook')
@@ -447,10 +458,10 @@ function skipCurrent() {
         <template v-if="rows.length === 0">
           <p>
             Fetch entries straight from your Scouts Australia Terrain logbook, or upload a previously
-            exported JSON file. You'll then step through each entry one at a time, with the option to
+            exported JSON file. You’ll then step through each entry one at a time, with the option to
             link it to an existing location or create a new one, before importing it. You can stop at
             any point — anything already imported stays imported, and picking up the same account or
-            file again later skips straight to what's left.
+            file again later skips straight to what’s left.
           </p>
 
           <v-card variant="tonal">
@@ -465,7 +476,7 @@ function skipCurrent() {
                 />
                 <v-text-field
                   :model-value="memberNumber" label="Member Number" variant="solo-filled" hide-details
-                  inputmode="numeric" pattern="[0-9]*" @update:model-value="onMemberNumberInput"
+                  inputmode="numeric" pattern="[0-9]*" spellcheck="false" @update:model-value="onMemberNumberInput"
                 />
                 <v-text-field
                   v-model="password" label="Password" :type="showPassword ? 'text' : 'password'"
@@ -521,12 +532,16 @@ function skipCurrent() {
                     Skipped
                   </v-chip>
                   <v-chip v-else-if="currentRow.status === 'error'" color="error" size="small">
-                    {{ currentRow.error }}
+                    Failed
                   </v-chip>
                 </div>
+                <!-- Not in the chip: chips don't wrap, and these are whole sentences. -->
+                <v-alert v-if="currentRow.status === 'error'" type="error" variant="tonal" density="compact">
+                  {{ currentRow.error }}
+                </v-alert>
 
                 <v-text-field
-                  v-model="currentRow.name" label="Name" variant="solo-filled" hide-details
+                  v-model="currentRow.name" label="Name" variant="solo-filled" hide-details autocomplete="off"
                   :readonly="currentRow.status === 'success'"
                 />
 
@@ -545,13 +560,16 @@ function skipCurrent() {
                     Led by: {{ currentRow.raw.details.who_lead }}
                   </v-chip>
                   <v-chip v-if="currentRow.raw.distance_travelled" size="small" variant="outlined">
-                    {{ currentRow.raw.distance_travelled }}m travelled
+                    {{ formatDistance(currentRow.raw.distance_travelled) }} travelled
                   </v-chip>
                 </div>
 
                 <div class="d-flex ga-4 flex-wrap">
-                  <DatePicker v-model="currentRow.dateStart" label="Start Date" />
-                  <DatePicker v-if="currentRow.dateEnd" v-model="currentRow.dateEnd" label="End Date" />
+                  <DatePicker v-model="currentRow.dateStart" label="Start Date" :readonly="currentRow.status === 'success'" />
+                  <DatePicker
+                    v-if="currentRow.dateEnd" v-model="currentRow.dateEnd" label="End Date"
+                    :readonly="currentRow.status === 'success'"
+                  />
                 </div>
 
                 <v-text-field
@@ -600,7 +618,7 @@ function skipCurrent() {
                   :disabled="currentRow.status === 'success'"
                 />
                 <p v-if="currentRow.locationText" class="text-body-small text-medium-emphasis">
-                  Terrain says: "{{ currentRow.locationText }}"
+                  Terrain says: “{{ currentRow.locationText }}”
                 </p>
 
                 <v-checkbox
@@ -617,6 +635,7 @@ function skipCurrent() {
                     </p>
                     <v-text-field
                       v-model="currentRow.newLocationDraft.name" label="Name" variant="solo-filled" hide-details
+                      autocomplete="off"
                     />
                     <v-combobox
                       v-model="currentRow.newLocationDraft.nicknames" label="Nicknames" multiple chips
@@ -638,9 +657,11 @@ function skipCurrent() {
                         Find
                       </v-btn>
                     </div>
-                    <div v-if="currentRow.newLocationDraft.latitude" class="text-body-small text-medium-emphasis">
-                      {{ currentRow.newLocationDraft.city }}, {{ currentRow.newLocationDraft.state }},
-                      {{ currentRow.newLocationDraft.country }}
+                    <div
+                      v-if="currentRow.newLocationDraft.latitude && draftPlace(currentRow.newLocationDraft)"
+                      class="text-body-small text-medium-emphasis"
+                    >
+                      {{ draftPlace(currentRow.newLocationDraft) }}
                     </div>
                   </v-card-text>
                 </v-card>

@@ -135,7 +135,7 @@ export async function logIn(userData: {
 }) {
   const { error } = await authClient.signIn.email(userData)
   if (error) {
-    showAlert(error.message ?? 'Login failed')
+    showAlert(error.message ?? 'Sign-in failed')
     return
   }
   await hydrateFromSession()

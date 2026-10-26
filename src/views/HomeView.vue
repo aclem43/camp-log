@@ -6,6 +6,7 @@ import { useDisplay } from 'vuetify'
 import { Location } from '@/shared/models/Location'
 import { Log } from '@/shared/models/Log'
 import LoadError from '@/components/LoadError.vue'
+import { formatDateRange } from '@/scripts/dates'
 import { pendingItems } from '@/scripts/outbox'
 import { getUser } from '@/scripts/user'
 
@@ -59,13 +60,13 @@ const recentLogs = computed(() => [
       key: item.id,
       to: { name: 'logs' },
       title: (item.payload.name as string) || 'Untitled log',
-      subtitle: `${(item.payload.dateStart as Date | undefined)?.toLocaleDateString() ?? ''} · ${item.status === 'failed' ? 'Sync failed' : 'Waiting to sync'}`,
+      subtitle: `${formatDateRange(item.payload.dateStart as Date | undefined, item.payload.dateEnd as Date | undefined)} · ${item.status === 'failed' ? 'Sync failed' : 'Waiting to sync'}`,
     })),
   ...logs.value.map(log => ({
     key: String(log.id),
     to: { name: 'log', params: { id: log.id } },
     title: log.name || 'Untitled log',
-    subtitle: log.dateStart.toLocaleDateString(),
+    subtitle: formatDateRange(log.dateStart, log.dateEnd),
   })),
 ].slice(0, LIST_LIMIT))
 
@@ -89,9 +90,9 @@ watch(() => pendingItems.value.length, (count, previous) => {
       <v-col class="d-flex flex-column ga-4">
         <v-card>
           <v-card-title class="d-flex ga-4 justify-space-between">
-            <div>
+            <div class="d-flex align-center ga-2" style="min-width: 0;">
               <v-icon size="32" :icon="mdiAccount" />
-              Welcome, {{ user?.name || 'No Name Set' }}!
+              <span class="text-truncate" style="min-width: 0;">Welcome, {{ user?.name || 'No Name Set' }}!</span>
             </div>
             <div>
               <v-btn
@@ -135,7 +136,7 @@ watch(() => pendingItems.value.length, (count, previous) => {
               />
             </v-list>
             <p v-else class="text-medium-emphasis">
-              You haven't added any campsites yet.
+              You haven’t added any campsites yet.
             </p>
           </v-card-text>
           <v-card-actions>
@@ -166,7 +167,7 @@ watch(() => pendingItems.value.length, (count, previous) => {
               />
             </v-list>
             <p v-else class="text-medium-emphasis">
-              You haven't logged any trips yet.
+              You haven’t logged any trips yet.
             </p>
           </v-card-text>
           <v-card-actions>

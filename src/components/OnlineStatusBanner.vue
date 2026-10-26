@@ -11,7 +11,7 @@ const failedCount = computed(() => pendingItems.value.filter(item => item.status
 const messages = computed(() => {
   const parts: string[] = []
   if (offline.value)
-    parts.push('You\'re offline — showing previously loaded data.')
+    parts.push('You’re offline — showing previously loaded data.')
   if (pendingCount.value > 0)
     parts.push(`${pendingCount.value} saved ${pendingCount.value === 1 ? 'item' : 'items'} waiting to sync.`)
   if (failedCount.value > 0)

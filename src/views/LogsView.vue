@@ -6,6 +6,7 @@ import { Log } from '@/shared/models/Log'
 import { LogLocation } from '@/shared/models/LogLocation'
 import type { Location } from '@/shared/models/Location'
 import LoadError from '@/components/LoadError.vue'
+import { formatDateRange } from '@/scripts/dates'
 import { getUser } from '@/scripts/user'
 import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
@@ -174,7 +175,7 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
           <v-text-field
             v-model="search"
             label="Filter"
-            placeholder="Search name, description, or location"
+            placeholder="Search name, description, or location…"
             variant="solo-filled"
             hide-details
             clearable
@@ -204,7 +205,7 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
 
         <v-card v-for="item in pagedRows" :key="item.pending ? item.pendingId : item.id">
           <v-card-title class="d-flex align-center flex-wrap ga-2">
-            {{ item.name }}
+            <span class="text-truncate" style="min-width: 0;">{{ item.name }}</span>
             <v-chip
               v-if="item.pending && item.pendingStatus === 'pending'"
               size="small" color="info" variant="tonal"
@@ -245,19 +246,14 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
           <v-card-text v-if="item.pending && item.pendingStatus === 'failed'" class="text-error pb-0">
             Sync failed: {{ item.pendingError || 'unknown error' }}
           </v-card-text>
-          <v-card-subtitle>
-            {{ item.dateStart?.toLocaleDateString() }}<template v-if="item.dateEnd">
-              to {{ item.dateEnd.toLocaleDateString() }}
-            </template>
+          <!-- Wraps: dates plus several locations don't fit one line on a phone. -->
+          <v-card-subtitle class="text-wrap">
+            {{ formatDateRange(item.dateStart, item.dateEnd) }}
             <template v-if="!item.pending && locationsFor(item.id).length">
               ·
-              <template v-for="(loc, i) in locationsFor(item.id)" :key="loc.id">
-                <router-link :to="{ name: 'map', query: { location: loc.id } }" class="text-primary">
-                  {{ loc.name }}
-                </router-link><template v-if="i < locationsFor(item.id).length - 1">
-                  ,
-                </template>
-              </template>
+              <span v-for="loc in locationsFor(item.id)" :key="loc.id" class="log-location">
+                <router-link :to="{ name: 'map', query: { location: loc.id } }" class="text-primary">{{ loc.name }}</router-link>
+              </span>
             </template>
           </v-card-subtitle>
           <v-card-text v-if="item.description" style="white-space: pre-wrap;">
@@ -270,3 +266,10 @@ watch(() => pendingLogRows.value.length, (_, previous) => {
     </v-col>
   </v-container>
 </template>
+
+<style scoped>
+/* The separator is CSS, so template whitespace can't put a space before it. */
+.log-location:not(:last-child)::after {
+  content: ', ';
+}
+</style>

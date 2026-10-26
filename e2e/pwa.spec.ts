@@ -25,11 +25,11 @@ test('service worker registers and activates', async ({ page }) => {
 
 test('offline banner appears when connectivity is lost', async ({ page, context }) => {
   await page.goto('/login')
-  await expect(page.getByText(/You're offline/)).toBeHidden()
+  await expect(page.getByRole('status').getByText(/You’re offline/)).toBeHidden()
 
   await context.setOffline(true)
-  await expect(page.getByText(/You're offline/)).toBeVisible()
+  await expect(page.getByRole('status').getByText(/You’re offline/)).toBeVisible()
 
   await context.setOffline(false)
-  await expect(page.getByText(/You're offline/)).toBeHidden()
+  await expect(page.getByRole('status').getByText(/You’re offline/)).toBeHidden()
 })

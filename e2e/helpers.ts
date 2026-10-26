@@ -78,5 +78,5 @@ export async function failRequests(context: BrowserContext, pattern: string, met
 
 export async function goOffline(page: Page, context: BrowserContext) {
   await context.setOffline(true)
-  await expect(page.getByText('You\'re offline')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('status').getByText('You’re offline')).toBeVisible({ timeout: 20_000 })
 }
