@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.5.0 (2026-10-26)
+
+### Features
+
+* The Locations list is easier to browse on a phone: you can filter it by name, nickname, place or notes, sort it by name, most recently added, most visited or last visited, and see 10 locations per page.
+* Each location in the list now shows its camp type, town, nicknames, how many times you've visited and when you last did, and flags locations that have no pin on the map.
+* Tap a location's name to open it, or use "Show on map" to jump straight to it on the map.
+* When editing a location you can now place its pin by tapping the map or using your current location, just like when adding one.
+* The Save button on a location is now at the top of the page, and Delete has moved to the bottom, away from Save.
+* Location pins are now coloured by camp type.
+
+### Bug Fixes
+
+* Finding an address no longer clears the town, state or country it didn't recognise.
+* Finding an address now asks before moving a pin you've already placed.
+* Pressing Enter in the address field now finds the address instead of saving.
+* Typing in coordinates now moves the map to them, and coordinates outside the valid range are rejected.
+* The map on a location no longer gets in the way of scrolling on a phone.
+* Saving a location while offline is now disabled with an explanation, instead of failing.
+* Locations that haven't synced yet now show their nicknames and type, and stay at the top of the list.
+
 ## 1.4.1 (2026-10-26)
 
 ### Bug Fixes
