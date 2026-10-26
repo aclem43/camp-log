@@ -1,17 +1,16 @@
 <script setup lang="ts">
-import { mdiArrowLeft, mdiCampfire, mdiDelete, mdiMapMarker } from '@mdi/js'
-import { LIcon, LMap, LMarker, LTileLayer } from '@maxel01/vue-leaflet'
-import { computed, onMounted, ref } from 'vue'
+import { mdiArrowLeft, mdiDelete } from '@mdi/js'
+import { onMounted, ref } from 'vue'
 import { remult } from 'remult'
 import type { VForm } from 'vuetify/components'
-import 'leaflet/dist/leaflet.css'
-import { Location, campTypes, campTypesToText, type campTypesType } from '@/shared/models/Location'
+import { Location } from '@/shared/models/Location'
 import LoadError from '@/components/LoadError.vue'
+import LocationForm from '@/components/LocationForm.vue'
 import PhotoGallery from '@/components/PhotoGallery.vue'
 import { showAlert } from '@/scripts/alert'
 import { askConfirm } from '@/scripts/confirm'
 import { offline } from '@/scripts/connectivity'
-import { required, validateForm } from '@/scripts/forms'
+import { validateForm } from '@/scripts/forms'
 import { describeFailure } from '@/scripts/outbox'
 import { useUnsavedChanges } from '@/scripts/unsaved'
 import { getUser } from '@/scripts/user'
@@ -29,7 +28,6 @@ const loadError = ref(false)
 const location = ref<Location | null>(null)
 const saving = ref(false)
 const deleting = ref(false)
-const findingAddress = ref(false)
 const form = ref<VForm | null>(null)
 
 // Back to wherever the user came from (the map, search results...), or the
@@ -42,47 +40,12 @@ let leaving = false
 const formState = () => location.value ? JSON.stringify(locationRepo.toJson(location.value)) : ''
 useUnsavedChanges(() => !leaving && !!location.value && formState() !== savedState.value)
 
-const campTypesText = campTypes.map(t => ({ title: campTypesToText(t as campTypesType), value: t }))
-
-const nicknamesArray = computed<string[]>({
-  get: () => location.value?.nicknames.split(',').map(n => n.trim()).filter(Boolean) ?? [],
-  set: (value) => {
-    if (location.value)
-      location.value.nicknames = value.join(', ')
-  },
-})
-
-type LatLngTuple = [number, number]
-
-const defaultCenter: LatLngTuple = [47.41322, -1.219482]
-const mapZoom = ref(14)
-const mapCenter = ref<LatLngTuple>(defaultCenter)
-
-const hasPin = computed(() => !!location.value && (location.value.latitude !== 0 || location.value.longitude !== 0))
-const markerLatLng = computed<LatLngTuple>(() => [location.value?.latitude ?? 0, location.value?.longitude ?? 0])
-
-function normalizeLatLng(latLng: LatLngTuple | { lat: number, lng: number }): { lat: number, lng: number } {
-  if (Array.isArray(latLng))
-    return { lat: latLng[0], lng: latLng[1] }
-  return latLng
-}
-
-function onMarkerMove(latLng: LatLngTuple | { lat: number, lng: number }) {
-  if (!location.value)
-    return
-  const { lat, lng } = normalizeLatLng(latLng)
-  location.value.latitude = lat
-  location.value.longitude = lng
-}
-
 async function load() {
   loading.value = true
   loadError.value = false
   try {
     location.value = (await locationRepo.findOne({ where: { id: props.id, user: user.value! } })) ?? null
     savedState.value = formState()
-    if (hasPin.value)
-      mapCenter.value = markerLatLng.value
   }
   catch {
     loadError.value = true
@@ -94,52 +57,13 @@ async function load() {
 
 onMounted(load)
 
-const findDisabled = computed(() => {
-  if (!location.value || findingAddress.value || offline.value)
-    return true
-  return location.value.address.length === 0
-})
-
-async function findAddress() {
-  if (!location.value)
-    return
-
-  findingAddress.value = true
-
-  try {
-    const resp = await fetch('/api/geocode', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ address: location.value.address }),
-    })
-    const result = await resp.json()
-
-    if (!resp.ok) {
-      showAlert(result.message ?? 'Failed to find address')
-      return
-    }
-
-    location.value.latitude = result.latitude
-    location.value.longitude = result.longitude
-    location.value.city = result.info.city
-    location.value.state = result.info.state
-    location.value.country = result.info.country
-    mapCenter.value = [result.latitude, result.longitude]
-    mapZoom.value = Math.max(mapZoom.value, 13)
-  }
-  catch (err) {
-    showAlert(describeFailure('find address', err))
-  }
-  finally {
-    findingAddress.value = false
-  }
-}
-
 async function save() {
-  if (!location.value || !await validateForm(form.value))
+  if (!location.value || offline.value || !await validateForm(form.value))
     return
+
+  // A cleared coordinate field holds '' - store it as 0, i.e. no pin.
+  location.value.latitude = Number(location.value.latitude) || 0
+  location.value.longitude = Number(location.value.longitude) || 0
 
   saving.value = true
   try {
@@ -211,65 +135,19 @@ async function deleteLocation() {
 
         <v-card-text>
           <v-form ref="form" class="d-flex flex-column ga-6" @submit.prevent="save">
-            <v-text-field
-              v-model="location.name" hide-details="auto" label="Name" required variant="solo-filled" autocomplete="off"
-              :rules="[required('Please enter a name for the location')]"
-            />
-            <v-combobox
-              v-model="nicknamesArray" label="Nicknames" multiple chips closable-chips
-              variant="solo-filled" hint="Alternate names to help you find this place later" persistent-hint
-            />
-            <v-textarea v-model="location.notes" hide-details label="Notes" variant="solo-filled" />
-            <v-select
-              v-model="location.type" hide-details label="Type" :items="campTypesText"
-              variant="solo-filled" :prepend-inner-icon="mdiCampfire"
-            />
-            <div class="d-flex align-center ga-4">
-              <v-text-field
-                v-model="location.address" hide-details label="Address" variant="solo-filled"
-                :prepend-inner-icon="mdiMapMarker"
-              />
-              <v-btn size="large" color="primary" :loading="findingAddress" :disabled="findDisabled" @click="findAddress">
-                Find
-              </v-btn>
-            </div>
-            <div class="d-flex ga-4">
-              <v-text-field v-model.number="location.latitude" hide-details label="Latitude" type="number" variant="solo-filled" />
-              <v-text-field v-model.number="location.longitude" hide-details label="Longitude" type="number" variant="solo-filled" />
-            </div>
-
-            <div v-if="hasPin">
-              <div class="location-map">
-                <LMap v-model:zoom="mapZoom" :center="mapCenter">
-                  <LTileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" :options="{ crossOrigin: true }" layer-type="base" name="OpenStreetMap" />
-                  <LMarker :lat-lng="markerLatLng" draggable @update:lat-lng="onMarkerMove">
-                    <LIcon class-name="location-marker-icon" :icon-size="[30, 30]" :icon-anchor="[15, 15]">
-                      <div class="location-pin">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path :d="mdiMapMarker" /></svg>
-                      </div>
-                    </LIcon>
-                  </LMarker>
-                </LMap>
-              </div>
-              <div class="map-hint">
-                Drag the pin to fine-tune the location
-              </div>
-            </div>
-            <!-- Wraps on phones, where three in a row would be ~95px each. -->
-            <div class="d-flex flex-wrap ga-4">
-              <v-text-field v-model="location.city" hide-details label="City" variant="solo-filled" class="place-field" />
-              <v-text-field v-model="location.state" hide-details label="State" variant="solo-filled" class="place-field" />
-              <v-text-field v-model="location.country" hide-details label="Country" variant="solo-filled" class="place-field" />
-            </div>
+            <LocationForm v-model="location" detail-fields />
 
             <div class="d-flex ga-4">
-              <v-btn type="submit" color="primary" :loading="saving">
+              <v-btn type="submit" color="primary" :loading="saving" :disabled="offline">
                 Save
               </v-btn>
               <v-btn color="error" :prepend-icon="mdiDelete" :loading="deleting" @click="deleteLocation">
                 Delete
               </v-btn>
             </div>
+            <p v-if="offline" class="text-body-small text-medium-emphasis mt-n4">
+              Saving changes needs a connection.
+            </p>
 
             <v-divider />
             <PhotoGallery :location-id="location.id" />
@@ -279,48 +157,3 @@ async function deleteLocation() {
     </v-col>
   </v-container>
 </template>
-
-<style>
-.location-map {
-  height: 300px;
-  width: 100%;
-  position: relative;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.place-field {
-  flex: 1 1 160px;
-  min-width: 160px;
-}
-
-.map-hint {
-  margin-top: 4px;
-  font-size: 14px;
-  opacity: 0.87;
-}
-
-.location-marker-icon {
-  background: transparent;
-  border: none;
-}
-
-.location-pin {
-  box-sizing: border-box;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid white;
-  background-color: #1976d2;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
-}
-
-.location-pin svg {
-  width: 18px;
-  height: 18px;
-  fill: white;
-}
-</style>
