@@ -33,12 +33,12 @@ test('creating a location while offline queues it and syncs once back online', a
   await page.getByRole('button', { name: 'Add Location' }).click()
 
   await expect(page).toHaveURL(/\/locations$/)
-  const row = page.locator('tr', { hasText: locationName })
+  const row = page.locator('.v-card', { hasText: locationName })
   await expect(row.getByText('Pending sync')).toBeVisible()
 
   await context.setOffline(false)
   await expect(row.getByText('Pending sync')).toBeHidden({ timeout: 15_000 })
-  await expect(page.locator('tr', { hasText: locationName })).toBeVisible()
+  await expect(page.locator('.v-card', { hasText: locationName })).toBeVisible()
 
   // clean up the throwaway account created for this test
   await page.request.post('/api/deactivate-account')

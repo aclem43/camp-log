@@ -18,12 +18,12 @@ test('the app opens with no connection, signed in and showing previously loaded 
   await page.getByLabel('Name', { exact: true }).fill(locationName)
   await page.getByRole('button', { name: 'Add Location' }).click()
   await expect(page).toHaveURL(/\/locations$/)
-  await expect(page.locator('tr', { hasText: locationName })).toBeVisible()
+  await expect(page.locator('.v-card', { hasText: locationName })).toBeVisible()
 
   // Load the list once more through the service worker, so it's in its cache.
   await waitForServiceWorker(page)
   await page.reload()
-  await expect(page.locator('tr', { hasText: locationName })).toBeVisible()
+  await expect(page.locator('.v-card', { hasText: locationName })).toBeVisible()
 
   // The "opening the app at camp" case: a fresh load with no connection at all.
   await context.setOffline(true)
@@ -34,7 +34,7 @@ test('the app opens with no connection, signed in and showing previously loaded 
   // reports navigator.onLine as true for a page loaded under Playwright's
   // offline emulation, so the banner's trigger never fires here.)
   await expect(page).toHaveURL(/\/locations$/)
-  await expect(page.locator('tr', { hasText: locationName })).toBeVisible()
+  await expect(page.locator('.v-card', { hasText: locationName })).toBeVisible()
 
   await context.setOffline(false)
   // clean up the throwaway account created for this test

@@ -559,14 +559,14 @@ test.describe('offline with the service worker', () => {
       ? route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'nope' }) })
       : route.fallback())
     await context.setOffline(false)
-    const row = page.locator('tr', { hasText: camp })
-    await expect(row.getByText('Sync failed')).toBeVisible({ timeout: 20_000 })
+    const row = page.locator('.v-card', { hasText: camp })
+    await expect(row.getByText('Sync failed', { exact: true })).toBeVisible({ timeout: 20_000 })
 
     await expect(row.getByText('nope')).toBeVisible() // the reason, not just a tooltip
     await context.unrouteAll()
     await row.getByTitle('Retry sync').click()
-    await expect(page.locator('tr', { hasText: camp }).getByText(/Sync failed|Pending sync/)).toHaveCount(0, { timeout: 20_000 })
-    await expect(page.locator('tr', { hasText: camp })).toBeVisible()
+    await expect(page.locator('.v-card', { hasText: camp }).getByText(/Sync failed|Pending sync/)).toHaveCount(0, { timeout: 20_000 })
+    await expect(page.locator('.v-card', { hasText: camp })).toBeVisible()
   })
 })
 

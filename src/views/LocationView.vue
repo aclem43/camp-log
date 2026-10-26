@@ -131,26 +131,29 @@ async function deleteLocation() {
             <v-icon :icon="mdiArrowLeft" />
           </v-btn>
           <span class="text-truncate" style="min-width: 0;">{{ location.name }}</span>
+          <v-spacer />
+          <!-- Outside the form, but still its submit button - so Enter in a field saves. -->
+          <v-btn type="submit" form="location-form" color="primary" :loading="saving" :disabled="offline">
+            Save
+          </v-btn>
         </v-card-title>
+        <v-card-text v-if="offline" class="text-body-small text-medium-emphasis text-end pb-0">
+          Saving changes needs a connection.
+        </v-card-text>
 
         <v-card-text>
-          <v-form ref="form" class="d-flex flex-column ga-6" @submit.prevent="save">
+          <v-form id="location-form" ref="form" class="d-flex flex-column ga-6" @submit.prevent="save">
             <LocationForm v-model="location" detail-fields />
-
-            <div class="d-flex ga-4">
-              <v-btn type="submit" color="primary" :loading="saving" :disabled="offline">
-                Save
-              </v-btn>
-              <v-btn color="error" :prepend-icon="mdiDelete" :loading="deleting" @click="deleteLocation">
-                Delete
-              </v-btn>
-            </div>
-            <p v-if="offline" class="text-body-small text-medium-emphasis mt-n4">
-              Saving changes needs a connection.
-            </p>
 
             <v-divider />
             <PhotoGallery :location-id="location.id" />
+
+            <v-divider />
+            <div>
+              <v-btn color="error" variant="tonal" :prepend-icon="mdiDelete" :loading="deleting" @click="deleteLocation">
+                Delete Location
+              </v-btn>
+            </div>
           </v-form>
         </v-card-text>
       </v-card>
